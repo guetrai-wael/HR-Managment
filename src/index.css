@@ -1,0 +1,39 @@
+@import "tailwindcss";
+
+/* 
+ * Override Ant Design Button styles to match design requirements
+ * Primary color: #7c3aed (purple)
+ * Hover color: #6d28d9 (darker purple)
+ */
+.ant-btn-primary {
+    background-color: #7c3aed !important;
+    border-color: #7c3aed !important;
+    height: 44px !important;
+    border-radius: 8px !important;
+}
+
+.ant-btn-primary:hover,
+.ant-btn-primary:focus {
+    background-color: #6d28d9 !important;
+    border-color: #6d28d9 !important;
+}
+
+.ant-btn-primary:active {
+    background-color: #5b21b6 !important;
+    border-color: #5b21b6 !important;
+}
+
+.ant-btn-primary[disabled],
+.ant-btn-primary[disabled]:hover,
+.ant-btn-primary[disabled]:focus,
+.ant-btn-primary[disabled]:active {
+    background-color: #d8b4fe !important;
+    border-color: #d8b4fe !important;
+    opacity: 0.7;
+}
+
+/* Override button text styles */
+.ant-btn {
+    font-weight: 500 !important;
+    font-size: 16px !important;
+}

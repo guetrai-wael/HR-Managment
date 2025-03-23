@@ -1,40 +1,13 @@
-import {
-  Controller,
-  Control,
-  FieldError,
-  Merge,
-  FieldErrorsImpl,
-  FieldValues,
-  Path,
-} from "react-hook-form";
+import { Controller, FieldValues } from "react-hook-form";
 
-/**
- * Props for the InputField component
- * Generic type T extends FieldValues to ensure type safety with react-hook-form
- */
-interface InputFieldProps<T extends FieldValues> {
-  name: Path<T>; // Field name (path) in the form values object
-  label: string; // Label displayed above the input
-  type: string; // Input type (text, email, password, etc.)
-  placeholder: string; // Placeholder text
-  control: Control<T>; // React Hook Form control object
-  error?: FieldError | Merge<FieldError, FieldErrorsImpl<any>>; // Error from form validation
-  showError: boolean; // Whether to display error messages
-}
+import { InputFieldProps } from "../../../types";
 
 /**
  * Reusable input field component that integrates with React Hook Form
  * Handles validation states and error display
  */
-function InputField<T extends FieldValues>({
-  name,
-  label,
-  type,
-  placeholder,
-  control,
-  error,
-  showError,
-}: InputFieldProps<T>) {
+function InputField<T extends FieldValues>(props: InputFieldProps<T>) {
+  const { name, label, type, placeholder, control, error, showError } = props;
   return (
     <div className="mb-4">
       {/* Input label */}

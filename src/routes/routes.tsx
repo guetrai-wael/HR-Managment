@@ -1,22 +1,52 @@
-// src/routes/routes.tsx
-import { Routes, Route } from "react-router-dom";
-import Login from "../pages/Auth/Login/Login";
-import Signup from "../pages/Auth/Signup/Signup";
+import { Routes, Route, Navigate } from "react-router-dom";
+import { Login, Signup } from "../pages/Auth";
+import { IRouteItem } from "../types";
+import { Dashboard } from "../pages/Dashboard";
+import { Fragment } from "react";
+import { AuthGuard, GuestGuard } from "../guards";
 
-const AppRoutes = () => {
+export const routes: IRouteItem[] = [
+  {
+    path: "/login",
+    element: <Login />,
+    guard: GuestGuard,
+  },
+  {
+    path: "/signup",
+    element: <Signup />,
+    guard: GuestGuard,
+  },
+  {
+    path: "/",
+    element: <Dashboard />,
+    guard: AuthGuard,
+  },
+  {
+    path: "*",
+    element: <Navigate to="/login" />,
+  },
+];
+
+export const renderRoutes = (routes: IRouteItem[]) => {
   return (
     <Routes>
-      {/* Auth Routes */}
-      <Route path="/" element={<Login />} />
-      <Route path="/signup" element={<Signup />} />
-      <Route
-        path="*"
-        element={
-          <div className="text-center p-8 text-gray-600">Page not found</div>
-        }
-      />
+      {routes.map((route, i) => {
+        const Layout = route.layout || Fragment;
+        const Guard = route.guard || Fragment;
+        return (
+          <Route
+            key={i}
+            path={route.path}
+            element={
+              <Guard>
+                <Layout>{route.element}</Layout>
+              </Guard>
+            }
+          />
+        );
+      })}
     </Routes>
   );
 };
 
-export default AppRoutes;
+export default routes;

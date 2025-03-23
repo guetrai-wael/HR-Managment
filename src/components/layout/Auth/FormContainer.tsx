@@ -1,22 +1,8 @@
 import { FC } from "react";
 import { Link } from "react-router-dom";
-import Logo from "../../../assets/icons/Logo.svg";
+import Logo from "../../../assets/icons/logo.svg";
 import stars from "../../../assets/img/Stars.png";
-
-/**
- * Props interface for the FormContainer component
- */
-interface FormContainerProps {
-  title: string;
-  subtitle?: string;
-  children: React.ReactNode;
-  actionLinkText: string;
-  actionLinkLabel: string;
-  actionLinkTo: string;
-  backgroundImage?: string;
-  infoHeading: string;
-  infoText: string;
-}
+import { FormContainerProps } from "../../../types";
 
 /**
  * FormContainer - A layout component for authentication pages
@@ -51,7 +37,7 @@ const FormContainer: FC<FormContainerProps> = ({
 
           {/* Title and subtitle */}
           <h2 className="text-2xl md:text-3xl font-semibold mb-2">{title}</h2>
-          {subtitle && <p className="text-gray-600 mb-4">{subtitle}</p>}
+          <p className="text-gray-600 mb-4">{subtitle}</p>
 
           {/* Form content (children prop) */}
           {children}
@@ -59,7 +45,7 @@ const FormContainer: FC<FormContainerProps> = ({
           {/* Action link (Sign up / Log in) */}
           <div className="text-center mt-4">
             <span className="text-gray-600">
-              {actionLinkText}{" "}
+              {actionLinkText}
               <Link
                 to={actionLinkTo}
                 className="text-[#7c3aed] hover:text-[#6d28d9] font-medium hover:underline transition-colors duration-200"

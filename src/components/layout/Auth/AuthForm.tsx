@@ -1,39 +1,9 @@
-import { FC, MouseEventHandler, useState } from "react";
+import { FC, useState } from "react";
 import { useForm, Controller, Path } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
-import * as Yup from "yup";
 import { Button, Checkbox } from "antd";
-import { GoogleLogin } from "@react-oauth/google";
 import InputField from "./InputField";
-import GoogleButton from "./GoogleButton";
-
-// Defines the structure of form fields
-interface Field {
-  name: string;
-  label: string;
-  type: string;
-  placeholder: string;
-}
-
-// TypeScript interface for the form values
-interface FormValues {
-  email: string;
-  password: string;
-  name?: string;
-  rememberMe: boolean;
-}
-
-// Props for the AuthForm component
-interface AuthFormProps {
-  onSubmit: (data: FormValues) => void;
-  schema: Yup.AnyObjectSchema;
-  submitText: string;
-  fields: Field[];
-  showRememberMe?: boolean;
-  // Add new props for Google authentication
-  onGoogleSuccess?: (response: any) => void;
-  onGoogleError?: () => void;
-}
+import { AuthFormProps, AuthFormValues } from "../../../types";
 
 const AuthForm: FC<AuthFormProps> = ({
   onSubmit,
@@ -41,8 +11,6 @@ const AuthForm: FC<AuthFormProps> = ({
   submitText,
   fields,
   showRememberMe = false,
-  onGoogleSuccess,
-  onGoogleError,
 }) => {
   const [loading, setLoading] = useState(false);
   const [formSubmitted, setFormSubmitted] = useState(false);
@@ -51,11 +19,11 @@ const AuthForm: FC<AuthFormProps> = ({
     control,
     handleSubmit,
     formState: { errors },
-  } = useForm<FormValues>({
+  } = useForm<AuthFormValues>({
     resolver: yupResolver(schema),
     defaultValues: {
       ...fields.reduce((acc, field) => {
-        acc[field.name as keyof FormValues] = "";
+        acc[field.name] = "";
         return acc;
       }, {} as Record<string, string>),
       rememberMe: false,
@@ -64,7 +32,7 @@ const AuthForm: FC<AuthFormProps> = ({
     reValidateMode: "onSubmit",
   });
 
-  const onSubmitForm = async (data: FormValues) => {
+  const onSubmitForm = async (data: AuthFormValues) => {
     setFormSubmitted(true);
     setLoading(true);
     try {
@@ -87,12 +55,12 @@ const AuthForm: FC<AuthFormProps> = ({
         {fields.map((field) => (
           <InputField
             key={field.name}
-            name={field.name as Path<FormValues>}
+            name={field.name as Path<AuthFormValues>}
             label={field.label}
             type={field.type}
             placeholder={field.placeholder}
             control={control}
-            error={errors[field.name as keyof FormValues]}
+            error={errors[field.name as keyof AuthFormValues]}
             showError={formSubmitted}
           />
         ))}
@@ -130,8 +98,6 @@ const AuthForm: FC<AuthFormProps> = ({
           >
             {submitText}
           </Button>
-
-          <GoogleButton onSuccess={onGoogleSuccess} onError={onGoogleError} />
         </div>
       </form>
     </div>

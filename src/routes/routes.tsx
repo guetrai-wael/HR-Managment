@@ -1,9 +1,10 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { Login, Signup } from "../pages/Auth";
 import { IRouteItem } from "../types";
-import { Dashboard } from "../pages/Dashboard";
+
 import { Fragment } from "react";
 import { AuthGuard, GuestGuard } from "../guards";
+import { Jobs } from "../pages/Jobs";
 
 export const routes: IRouteItem[] = [
   {
@@ -18,7 +19,7 @@ export const routes: IRouteItem[] = [
   },
   {
     path: "/",
-    element: <Dashboard />,
+    element: <Jobs />,
     guard: AuthGuard,
   },
   {

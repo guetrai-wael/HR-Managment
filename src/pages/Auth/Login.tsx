@@ -1,12 +1,14 @@
 import { FC } from "react";
-import FormContainer from "../../components/layout/Auth/FormContainer";
-import AuthForm from "../../components/layout/Auth/AuthForm";
+import { FormContainer, AuthForm } from "../../components/layout/Auth/index";
 import * as yup from "yup";
 import LoginBackground from "../../assets/img/log in.png";
 import { ILoginData } from "../../types";
-import { handleLogin } from "../../API/Login";
+import { handleLogin, getSession } from "../../API/Login";
+import { useNavigate } from "react-router-dom";
+import { message } from "antd";
 
 const Login: FC = () => {
+  const navigate = useNavigate();
   const LoginSchema = yup.object().shape({
     email: yup
       .string()
@@ -17,15 +19,33 @@ const Login: FC = () => {
       ),
     password: yup.string().required("password is required"),
   });
+
   const onSubmit = async (data: ILoginData) => {
     const { email, password } = data;
-
     await handleLogin(email, password);
+    navigate("/");
+  };
+
+  const handleGoogleSuccess = async () => {
+    try {
+      // This will be called after the user is redirected back from Google
+      const session = await getSession();
+      if (session) {
+        message.success("Successfully logged in with Google!");
+        navigate("/");
+      }
+    } catch (error) {
+      console.error("Error handling Google login success:", error);
+    }
+  };
+
+  const handleGoogleError = (error: Error) => {
+    message.error("Google login failed: " + error.message);
   };
 
   return (
     <FormContainer
-      title="Log in"
+      title="Login"
       subtitle="Welcome back! Please enter your details."
       actionLinkText="Don't have an account? "
       actionLinkLabel=" Sign up"
@@ -37,8 +57,10 @@ const Login: FC = () => {
       <AuthForm
         onSubmit={onSubmit}
         schema={LoginSchema}
-        submitText="Sign in"
-        showRememberMe={true} // Show remember me checkbox on login
+        submitText="Login"
+        showRememberMe={true}
+        onGoogleSuccess={handleGoogleSuccess}
+        onGoogleError={handleGoogleError}
         fields={[
           {
             name: "email",

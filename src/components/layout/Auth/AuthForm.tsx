@@ -2,8 +2,9 @@ import { FC, useState } from "react";
 import { useForm, Controller, Path } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { Button, Checkbox } from "antd";
-import InputField from "./InputField";
+import { InputField } from "./index";
 import { AuthFormProps, AuthFormValues } from "../../../types";
+import { GoogleSignInButton } from "./index";
 
 const AuthForm: FC<AuthFormProps> = ({
   onSubmit,
@@ -11,6 +12,8 @@ const AuthForm: FC<AuthFormProps> = ({
   submitText,
   fields,
   showRememberMe = false,
+  onGoogleSuccess,
+  onGoogleError,
 }) => {
   const [loading, setLoading] = useState(false);
   const [formSubmitted, setFormSubmitted] = useState(false);
@@ -98,6 +101,12 @@ const AuthForm: FC<AuthFormProps> = ({
           >
             {submitText}
           </Button>
+          {/* Google Sign-in Button */}
+          <GoogleSignInButton
+            label={`Continue with Google`}
+            onSuccess={onGoogleSuccess}
+            onError={(error) => onGoogleError?.(error)}
+          />
         </div>
       </form>
     </div>

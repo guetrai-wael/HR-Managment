@@ -1,18 +1,19 @@
 import { FC } from "react";
-import FormContainer from "../../components/layout/Auth/FormContainer";
-import AuthForm from "../../components/layout/Auth/AuthForm";
+import { FormContainer, AuthForm } from "../../components/layout/Auth/index";
 import * as Yup from "yup";
 import SignupBackground from "../../assets/img/sign up.png";
-import { handleRegister } from "../../API/Login";
+import { handleRegister, getSession } from "../../API/Login";
 import { ILoginData } from "../../types";
+import { useNavigate } from "react-router-dom";
+import { message } from "antd";
 
 const Signup: FC = () => {
+  const navigate = useNavigate();
   const SignupSchema = Yup.object().shape({
     name: Yup.string()
       .required("Name is required")
       .min(2, "Name must be at least 2 characters"),
     email: Yup.string()
-      .email("Invalid email format")
       .matches(
         /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
         "Invalid email format"
@@ -25,8 +26,23 @@ const Signup: FC = () => {
 
   const onSubmit = async (data: ILoginData) => {
     const { email, password } = data;
-
     await handleRegister(email, password);
+  };
+
+  const handleGoogleSuccess = async () => {
+    try {
+      const session = await getSession();
+      if (session) {
+        message.success("Successfully signed up with Google!");
+        navigate("/");
+      }
+    } catch (error) {
+      console.error("Error handling Google signup success:", error);
+    }
+  };
+
+  const handleGoogleError = (error: Error) => {
+    message.error("Google signup failed: " + error.message);
   };
 
   return (
@@ -34,7 +50,7 @@ const Signup: FC = () => {
       title="Sign up"
       subtitle="Create your account"
       actionLinkText="Already have an account? "
-      actionLinkLabel=" Log in"
+      actionLinkLabel=" Login"
       actionLinkTo="/"
       backgroundImage={SignupBackground}
       infoHeading="Streamline Your HR Experience"
@@ -44,6 +60,8 @@ const Signup: FC = () => {
         onSubmit={onSubmit}
         schema={SignupSchema}
         submitText="Create account"
+        onGoogleSuccess={handleGoogleSuccess}
+        onGoogleError={handleGoogleError}
         fields={[
           {
             name: "name",

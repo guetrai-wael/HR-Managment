@@ -81,16 +81,8 @@ export interface AuthFormProps {
   submitText: string;
   fields: AuthFormField[];
   showRememberMe?: boolean;
-  onGoogleSuccess?: (response: any) => void;
-  onGoogleError?: () => void;
-}
-
-/**
- * Props for the GoogleButton component
- */
-export interface GoogleButtonProps {
-  onSuccess: (response: any) => void;
-  onError: () => void;
+  onGoogleSuccess?: () => void;
+  onGoogleError?: (error: Error) => void;
 }
 
 export interface ILoginData {

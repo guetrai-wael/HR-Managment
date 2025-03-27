@@ -1,6 +1,6 @@
 import { FC } from "react";
 import { Button } from "antd";
-import supabase from "../../../services/supabaseClient";
+import { useAuth } from "../../hooks/useAuth";
 
 interface GoogleSignInButtonProps {
   label: string;
@@ -13,19 +13,13 @@ const GoogleSignInButton: FC<GoogleSignInButtonProps> = ({
   onSuccess,
   onError,
 }) => {
+  const { loginWithGoogle, loading } = useAuth();
+
   const handleGoogleSignIn = async () => {
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: window.location.origin,
-        },
-      });
+      const success = await loginWithGoogle();
 
-      if (error) {
-        onError?.(error);
-        console.error("Google sign-in error:", error);
-      } else if (onSuccess) {
+      if (success && onSuccess) {
         onSuccess();
       }
     } catch (error) {
@@ -39,6 +33,7 @@ const GoogleSignInButton: FC<GoogleSignInButtonProps> = ({
       type="default"
       size="large"
       onClick={handleGoogleSignIn}
+      loading={loading}
       className="w-full flex items-center justify-center gap-2 border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 h-11 rounded-md"
     >
       <svg

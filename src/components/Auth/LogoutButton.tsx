@@ -1,8 +1,7 @@
 import { FC } from "react";
 import { Button } from "antd";
 import { LogoutOutlined } from "@ant-design/icons";
-import { useNavigate } from "react-router-dom";
-import { handleLogout } from "../../../API/Login";
+import { useAuth } from "../../hooks/useAuth";
 
 interface LogoutButtonProps {
   type?: "primary" | "default" | "text";
@@ -17,14 +16,7 @@ const LogoutButton: FC<LogoutButtonProps> = ({
   showIcon = true,
   className = "",
 }) => {
-  const navigate = useNavigate();
-
-  const handleButtonClick = async () => {
-    const success = await handleLogout();
-    if (success) {
-      navigate("/login");
-    }
-  };
+  const { logout, loading } = useAuth();
 
   return (
     <Button
@@ -32,7 +24,8 @@ const LogoutButton: FC<LogoutButtonProps> = ({
       size={size}
       className={className}
       icon={showIcon ? <LogoutOutlined /> : null}
-      onClick={handleButtonClick}
+      onClick={logout}
+      loading={loading}
     >
       {showIcon ? " Logout" : "Logout"}
     </Button>

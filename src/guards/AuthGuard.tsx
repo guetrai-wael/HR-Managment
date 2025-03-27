@@ -1,5 +1,5 @@
 import { Navigate } from "react-router-dom";
-import { useUser } from "../context/index";
+import { useUser } from "../hooks/index";
 
 const AuthGuard = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useUser();

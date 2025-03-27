@@ -1,8 +1,8 @@
 import { FC } from "react";
 import { Link } from "react-router-dom";
-import Logo from "../../../assets/icons/logo.svg";
-import stars from "../../../assets/img/Stars.png";
-import { FormContainerProps } from "../../../types";
+import Logo from "../../assets/icons/logo.svg";
+import stars from "../../assets/img/Stars.png";
+import { FormContainerProps } from "../../types";
 
 /**
  * FormContainer - A layout component for authentication pages

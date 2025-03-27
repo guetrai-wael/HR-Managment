@@ -1,14 +1,16 @@
 import { FC } from "react";
-import { FormContainer, AuthForm } from "../../components/layout/Auth/index";
+import { FormContainer, AuthForm } from "../../components/Auth/index";
 import * as Yup from "yup";
 import SignupBackground from "../../assets/img/sign up.png";
-import { handleRegister, getSession } from "../../API/Login";
 import { ILoginData } from "../../types";
 import { useNavigate } from "react-router-dom";
 import { message } from "antd";
+import { useAuth, useFormSubmission } from "../../hooks";
 
 const Signup: FC = () => {
   const navigate = useNavigate();
+  const { register, getSession } = useAuth();
+
   const SignupSchema = Yup.object().shape({
     name: Yup.string()
       .required("Name is required")
@@ -24,10 +26,13 @@ const Signup: FC = () => {
       .required("Password is required"),
   });
 
-  const onSubmit = async (data: ILoginData) => {
+  const { handleSubmit } = useFormSubmission(async (data: ILoginData) => {
     const { email, password } = data;
-    await handleRegister(email, password);
-  };
+    const session = await register(email, password);
+    if (session) {
+      navigate("/");
+    }
+  });
 
   const handleGoogleSuccess = async () => {
     try {
@@ -57,7 +62,7 @@ const Signup: FC = () => {
       infoText="Manage your leave requests, job applications, and attendance with ease. Join our system and stay connected with your workplace."
     >
       <AuthForm
-        onSubmit={onSubmit}
+        onSubmit={handleSubmit}
         schema={SignupSchema}
         submitText="Create account"
         onGoogleSuccess={handleGoogleSuccess}

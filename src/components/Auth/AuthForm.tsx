@@ -3,7 +3,7 @@ import { useForm, Controller, Path } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { Button, Checkbox } from "antd";
 import { InputField } from "./index";
-import { AuthFormProps, AuthFormValues } from "../../../types";
+import { AuthFormProps, AuthFormValues } from "../../types";
 import { GoogleSignInButton } from "./index";
 
 const AuthForm: FC<AuthFormProps> = ({

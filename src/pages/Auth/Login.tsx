@@ -1,14 +1,16 @@
 import { FC } from "react";
-import { FormContainer, AuthForm } from "../../components/layout/Auth/index";
+import { FormContainer, AuthForm } from "../../components/Auth/index";
 import * as yup from "yup";
 import LoginBackground from "../../assets/img/log in.png";
 import { ILoginData } from "../../types";
-import { handleLogin, getSession } from "../../API/Login";
 import { useNavigate } from "react-router-dom";
 import { message } from "antd";
+import { useAuth, useFormSubmission } from "../../hooks/index";
 
 const Login: FC = () => {
   const navigate = useNavigate();
+  const { login, getSession } = useAuth();
+
   const LoginSchema = yup.object().shape({
     email: yup
       .string()
@@ -20,11 +22,15 @@ const Login: FC = () => {
     password: yup.string().required("password is required"),
   });
 
-  const onSubmit = async (data: ILoginData) => {
-    const { email, password } = data;
-    await handleLogin(email, password);
-    navigate("/");
-  };
+  const { handleSubmit, loading: formLoading } = useFormSubmission(
+    async (data: ILoginData) => {
+      const { email, password } = data;
+      const session = await login(email, password);
+      if (session) {
+        navigate("/");
+      }
+    }
+  );
 
   const handleGoogleSuccess = async () => {
     try {
@@ -55,7 +61,7 @@ const Login: FC = () => {
       infoText="Track your leave balance, submit job applications, and stay updated on your work attendance—all in one place."
     >
       <AuthForm
-        onSubmit={onSubmit}
+        onSubmit={handleSubmit}
         schema={LoginSchema}
         submitText="Login"
         showRememberMe={true}

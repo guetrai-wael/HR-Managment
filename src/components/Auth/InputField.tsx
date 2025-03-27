@@ -1,6 +1,6 @@
 import { Controller, FieldValues } from "react-hook-form";
 
-import { InputFieldProps } from "../../../types";
+import { InputFieldProps } from "../../types";
 
 /**
  * Reusable input field component that integrates with React Hook Form

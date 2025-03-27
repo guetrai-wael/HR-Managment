@@ -1,5 +1,5 @@
-import { useUser } from "../../context/UserContext";
-import { LogoutButton } from "../../components/layout/Auth";
+import { useUser } from "../../hooks/useUser";
+import { LogoutButton } from "../../components/Auth";
 import { Card, Typography, Avatar } from "antd";
 import { UserOutlined } from "@ant-design/icons";
 

@@ -1,22 +1,18 @@
-import { useEffect, useState } from "react";
-import { validateToken } from "../API/validatetoken";
-import { Spin } from "antd";
 import { Navigate } from "react-router-dom";
+import { useUser } from "../context/index";
 
 const GuestGuard = ({ children }: { children: React.ReactNode }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const { user, loading } = useUser();
 
-  useEffect(() => {
-    const checkToken = async () => {
-      const isValid = await validateToken();
-      setIsAuthenticated(isValid);
-    };
-    checkToken();
-  }, []);
-  if (isAuthenticated === null) {
-    return <Spin />; // or a loading spinner
+  if (loading) {
+    return null; // The loading state is already handled by the UserContext
   }
-  if (isAuthenticated) return <Navigate to="/" />;
+
+  if (user) {
+    return <Navigate to="/" />;
+  }
+
   return <>{children}</>;
 };
+
 export default GuestGuard;

@@ -37,3 +37,35 @@
     font-weight: 500 !important;
     font-size: 16px !important;
 }
+
+/* Make the job card responsive but maintain proportions */
+@media (max-width: 768px) {
+    .ant-btn-primary {
+        height: 40px !important;
+    }
+
+    /* Smaller spacing on mobile */
+    .px-8 {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+}
+
+/* Keep all job cards the same height regardless of content */
+.job-card {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+/* Ensure card footer stays at the bottom */
+.job-card-footer {
+    margin-top: auto;
+}
+
+/* Improved hover state for job cards */
+.job-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease;
+}

@@ -1,10 +1,20 @@
+import { Fragment, lazy, Suspense } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
-import { Login, Signup } from "../pages/Auth";
 import { IRouteItem } from "../types";
-
-import { Fragment } from "react";
 import { AuthGuard, GuestGuard } from "../guards";
-import { Jobs } from "../pages/Jobs";
+import MainLayout from "../components/Layouts/MainLayout";
+import { Spin } from "antd";
+
+// Lazy load pages
+const Login = lazy(() => import("../pages/Auth/Login"));
+const Signup = lazy(() => import("../pages/Auth/Signup"));
+const Jobs = lazy(() => import("../pages/Jobs/Jobs"));
+
+const LoadingFallback = () => (
+  <div className="flex min-h-screen items-center justify-center">
+    <Spin size="large" />
+  </div>
+);
 
 export const routes: IRouteItem[] = [
   {
@@ -21,6 +31,7 @@ export const routes: IRouteItem[] = [
     path: "/",
     element: <Jobs />,
     guard: AuthGuard,
+    layout: MainLayout,
   },
   {
     path: "*",
@@ -30,23 +41,25 @@ export const routes: IRouteItem[] = [
 
 export const renderRoutes = (routes: IRouteItem[]) => {
   return (
-    <Routes>
-      {routes.map((route, i) => {
-        const Layout = route.layout || Fragment;
-        const Guard = route.guard || Fragment;
-        return (
-          <Route
-            key={i}
-            path={route.path}
-            element={
-              <Guard>
-                <Layout>{route.element}</Layout>
-              </Guard>
-            }
-          />
-        );
-      })}
-    </Routes>
+    <Suspense fallback={<LoadingFallback />}>
+      <Routes>
+        {routes.map((route, i) => {
+          const Layout = route.layout || Fragment;
+          const Guard = route.guard || Fragment;
+          return (
+            <Route
+              key={i}
+              path={route.path}
+              element={
+                <Guard>
+                  <Layout>{route.element}</Layout>
+                </Guard>
+              }
+            />
+          );
+        })}
+      </Routes>
+    </Suspense>
   );
 };
 

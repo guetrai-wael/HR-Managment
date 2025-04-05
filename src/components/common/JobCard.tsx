@@ -1,4 +1,5 @@
 import React from "react";
+import { useRole } from "../../hooks";
 import { Divider, Button, Tooltip } from "antd";
 import {
   FireFilled,
@@ -44,9 +45,10 @@ const JobCard: React.FC<JobCardProps> = ({
   onDeleteClick,
   // Visibility controls with sensible defaults
   showApplyButton = true,
-  showEditButton = false, // Admin only by default
-  showDeleteButton = false, // Admin only by default
+  showEditButton,
+  showDeleteButton,
 }) => {
+  const { isAdmin } = useRole();
   // Icon mapping
   const iconMap = {
     hot: <FireFilled style={{ color: "#6068CA" }} />,

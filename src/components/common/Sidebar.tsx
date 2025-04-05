@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from "react";
-import { useUser } from "../../hooks/index";
+import { useUser, useRole } from "../../hooks/index";
 import { useAuth } from "../../hooks/useAuth";
 import { Link, useLocation } from "react-router-dom";
 import {
@@ -17,6 +17,7 @@ import Logo from "../../assets/icons/Logo.svg";
 
 const Sidebar: React.FC = () => {
   const { user } = useUser();
+  const { isAdmin } = useRole();
   const location = useLocation();
   const { logout } = useAuth();
   const isActive = useCallback(
@@ -29,7 +30,7 @@ const Sidebar: React.FC = () => {
       { icon: <IconHome stroke={1.5} />, text: "Home", path: "/home" },
       {
         icon: <IconClipboardText stroke={1.5} />,
-        text: "Registrations",
+        text: "Applications", // Changed from "Registrations" to be more clear
         path: "/registrations",
       },
       { icon: <IconUserShare stroke={1.5} />, text: "Leaves", path: "/leaves" },
@@ -158,7 +159,7 @@ const Sidebar: React.FC = () => {
                 {user?.email?.split("@")[0] || "User"}
               </span>
               <span className="text-sm text-[#667085]">
-                {user?.email || ""}
+                {isAdmin ? "Admin" : "Employee"}
               </span>
             </div>
           </div>

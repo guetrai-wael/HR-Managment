@@ -3,7 +3,7 @@ import { Drawer } from "antd";
 import { MenuOutlined } from "@ant-design/icons";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
-import { useUser } from "../../hooks";
+import { useUser, useRole } from "../../hooks";
 import Logo from "../../assets/icons/Logo.svg";
 import {
   IconUserShare,
@@ -18,6 +18,7 @@ import {
 
 const MobileMenu: React.FC = () => {
   const { user } = useUser();
+  const { isAdmin } = useRole();
   const [open, setOpen] = useState(false);
   const location = useLocation();
   const { logout } = useAuth();
@@ -31,11 +32,29 @@ const MobileMenu: React.FC = () => {
     setOpen(false);
   };
 
+  // Get current page title based on path
+  const getCurrentPageTitle = () => {
+    const path = location.pathname;
+    if (path === "/") return "Jobs";
+    if (path === "/home") return "Home";
+    if (path === "/registrations")
+      return isAdmin ? "Applications Management" : "My Applications";
+    if (path === "/leaves") return "Leaves";
+    if (path === "/employee") return "Employee";
+    if (path === "/recordings") return "Recordings";
+    if (path === "/settings") return "Settings";
+
+    // Handle job details page
+    if (path.startsWith("/jobs/")) return "Job Details";
+
+    return "Dashboard";
+  };
+
   const navItems = [
     { icon: <IconHome stroke={1.5} />, text: "Home", path: "/home" },
     {
       icon: <IconClipboardText stroke={1.5} />,
-      text: "Registrations",
+      text: "Applications",
       path: "/registrations",
     },
     { icon: <IconUserShare stroke={1.5} />, text: "Leaves", path: "/leaves" },
@@ -59,13 +78,25 @@ const MobileMenu: React.FC = () => {
 
   return (
     <>
-      <button
-        onClick={showDrawer}
-        className="fixed bottom-4 right-4 z-50 md:hidden bg-[#6941C6] text-white p-3 rounded-full shadow-lg"
-        aria-label="Open menu"
-      >
-        <MenuOutlined style={{ fontSize: "20px" }} />
-      </button>
+      {/* Mobile header bar */}
+      <div className="fixed top-0 left-0 right-0 z-40 md:hidden bg-white flex items-center h-16 px-4 shadow-sm">
+        <button
+          onClick={showDrawer}
+          className="p-2 rounded-md text-[#6941C6]"
+          aria-label="Open menu"
+        >
+          <MenuOutlined style={{ fontSize: "20px" }} />
+        </button>
+        <div className="flex-1 text-center">
+          <h1 className="text-lg font-medium text-[#101828]">
+            {getCurrentPageTitle()}
+          </h1>
+        </div>
+        <div className="w-8">{/* Empty div for balance */}</div>
+      </div>
+
+      {/* Add padding to compensate for the fixed header */}
+      <div className="md:hidden h-16"></div>
 
       <Drawer placement="left" onClose={onClose} open={open} width={280}>
         <div className="flex flex-col h-full justify-between">
@@ -134,7 +165,7 @@ const MobileMenu: React.FC = () => {
                     {user?.email?.split("@")[0] || "User"}
                   </span>
                   <span className="text-sm text-[#667085]">
-                    {user?.email || ""}
+                    {isAdmin ? "Admin" : "Employee"}
                   </span>
                 </div>
               </div>

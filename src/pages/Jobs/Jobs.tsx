@@ -1,60 +1,104 @@
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { PlusOutlined } from "@ant-design/icons";
+import { Modal, message, Spin } from "antd";
 import { Header, SectionHeader, JobCard } from "../../components/common/index";
+import { JobForm } from "../../components/Jobs/index";
+import supabase from "../../services/supabaseClient";
+import { useUser, useRole } from "../../hooks";
+
+// Define job interface
+interface Job {
+  id: number;
+  title: string;
+  description: string;
+  status: string;
+  deadline: string;
+  department: string;
+  // Add other fields as needed
+}
 
 const Jobs = () => {
-  // Sample job data with added deadlines
-  const featuredJobs = [
-    {
-      id: 1,
-      title: "Senior Frontend Developer",
-      description:
-        "We're looking for a senior frontend developer with 5+ years of experience in React, TypeScript, and modern web technologies.",
-      status: "Featured",
-      icon: "featured",
-      deadline: "2025-04-15", // String date format: ~2 weeks away
-    },
-    {
-      id: 2,
-      title: "UX/UI Designer",
-      description:
-        "Join our design team to create beautiful, intuitive interfaces for our enterprise products. Experience with Figma required.",
-      status: "Open",
-      icon: "star",
-      deadline: "2025-03-28", // Date object: 3 days from now
-    },
-    {
-      id: 3,
-      title: "Full Stack Engineer",
-      description:
-        "Work on cutting-edge projects using React, Node.js, and AWS. Remote position available with competitive salary.",
-      status: "New",
-      icon: "hot",
-      deadline: "2025-05-01", // String date format: ~1 month away
-    },
-  ];
+  const navigate = useNavigate();
+  const { user } = useUser();
+  const { isAdmin, loading: roleLoading } = useRole();
+
+  // State variables
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [jobFormVisible, setJobFormVisible] = useState(false);
+  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const [activeTab, setActiveTab] = useState("all");
+
+  // Fetch jobs from the database
+  const fetchJobs = async () => {
+    setLoading(true);
+    try {
+      let query = supabase
+        .from("jobs")
+        .select("*")
+        .order("posted_at", { ascending: false });
+
+      // Apply department filter if not "all"
+      if (activeTab !== "all") {
+        query = query.eq("department", activeTab);
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+
+      setJobs(data || []);
+    } catch (error) {
+      console.error("Error fetching jobs:", error);
+      message.error("Failed to load jobs");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch jobs on initial load and when activeTab changes
+  useEffect(() => {
+    fetchJobs();
+  }, [activeTab]);
 
   const handleViewJob = (id: number) => {
-    console.log("View job details for:", id);
+    navigate(`/jobs/${id}`);
   };
 
-  const handleApplyJob = (id: number) => {
-    console.log("Applied for job:", id);
-    // Implement application logic here
+  const handleAddJob = () => {
+    setSelectedJob(null); // Reset selected job (for new job form)
+    setJobFormVisible(true);
   };
 
-  const handleEditJob = (id: number) => {
-    console.log("Edit job:", id);
-    // Open edit form/modal
+  const handleEditJob = (job: Job) => {
+    setSelectedJob(job);
+    setJobFormVisible(true);
   };
 
-  const handleDeleteJob = (id: number) => {
-    console.log("Delete job:", id);
-    // Show confirmation dialog before deletion
+  const handleDeleteJob = async (id: number) => {
+    try {
+      const { error } = await supabase.from("jobs").delete().eq("id", id);
+
+      if (error) throw error;
+
+      message.success("Job deleted successfully");
+      fetchJobs(); // Refresh the job list
+    } catch (error) {
+      console.error("Error deleting job:", error);
+      message.error("Failed to delete job");
+    }
   };
 
-  // Determine if user is admin (temporary implementation)
-  // In the future, you can replace this with actual role check
-  const isAdmin = true; // For testing - set to false for regular user view
+  // Define the department tabs for filtering
+  const departmentTabs = [
+    { key: "all", label: "All" },
+    { key: "Engineering", label: "Engineering" },
+    { key: "Marketing", label: "Marketing" },
+    { key: "Finance", label: "Finance" },
+    { key: "HR", label: "HR" },
+    { key: "Design", label: "Design" },
+  ];
 
   return (
     <div className="flex flex-col h-full overflow-auto py-4">
@@ -64,50 +108,72 @@ const Jobs = () => {
 
       <div className="px-4 md:px-8 space-y-10">
         {/* Featured Jobs Section */}
-
         <SectionHeader
-          title="Featured Jobs"
+          title="Available Jobs"
           subtitle="Apply to jobs that match your skills and experience"
-          tabs={[
-            { key: "all", label: "All" },
-            { key: "it", label: "IT" },
-            { key: "business", label: "Business" },
-            { key: "design", label: "Design" },
-          ]}
+          tabs={departmentTabs}
           defaultActiveTab="all"
+          onTabChange={setActiveTab}
           actionButton={
             isAdmin
               ? {
                   icon: <PlusOutlined />,
                   label: "Add Job",
-                  onClick: () => console.log("Add job clicked"),
+                  onClick: handleAddJob,
                 }
               : undefined
           }
         />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-2">
-          {featuredJobs.map((job) => (
-            <JobCard
-              key={job.id}
-              title={job.title}
-              description={job.description}
-              status={job.status}
-              icon={job.icon as any}
-              deadline={job.deadline}
-              onActionClick={() => handleViewJob(job.id)}
-              // New props
-              onApplyClick={() => handleApplyJob(job.id)}
-              onEditClick={() => handleEditJob(job.id)}
-              onDeleteClick={() => handleDeleteJob(job.id)}
-              // Show edit/delete only for admins
-              showApplyButton={true} // Everyone can apply
-              showEditButton={isAdmin} // Only admins can edit
-              showDeleteButton={isAdmin} // Only admins can delete
-            />
-          ))}
-        </div>
+        {loading ? (
+          <div className="flex justify-center py-20">
+            <Spin size="large" />
+          </div>
+        ) : jobs.length === 0 ? (
+          <div className="text-center py-20 text-gray-500">
+            No jobs available in this category
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-2">
+            {jobs.map((job) => (
+              <JobCard
+                key={job.id}
+                title={job.title}
+                description={job.description}
+                status={job.status}
+                icon="featured"
+                deadline={job.deadline}
+                onActionClick={() => handleViewJob(job.id)}
+                onApplyClick={() => handleViewJob(job.id)}
+                onEditClick={() => handleEditJob(job)}
+                onDeleteClick={() => handleDeleteJob(job.id)}
+                showApplyButton={!isAdmin} // Only show apply for non-admins
+                showEditButton={isAdmin} // Only show edit for admins
+                showDeleteButton={isAdmin} // Only show delete for admins
+              />
+            ))}
+          </div>
+        )}
       </div>
+
+      {/* Job Add/Edit Modal */}
+      <Modal
+        title={selectedJob ? "Edit Job" : "Add New Job"}
+        open={jobFormVisible}
+        onCancel={() => setJobFormVisible(false)}
+        footer={null}
+        width={800}
+      >
+        <JobForm
+          jobId={selectedJob?.id}
+          initialValues={selectedJob}
+          onSuccess={() => {
+            setJobFormVisible(false);
+            fetchJobs();
+          }}
+          onCancel={() => setJobFormVisible(false)}
+        />
+      </Modal>
     </div>
   );
 };

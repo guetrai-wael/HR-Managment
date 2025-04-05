@@ -16,21 +16,26 @@ export const useAuth = () => {
    */
   const login = async (email: string, password: string) => {
     setLoading(true);
+    try {
+      const { data: session, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    const { data: session, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+      if (error) {
+        message.error(error.message);
+        return null;
+      }
 
-    setLoading(false);
-
-    if (error) {
-      message.error(error.message);
+      message.success("Successfully logged in");
+      return session;
+    } catch (e) {
+      message.error("An unexpected error occurred");
+      console.error(e);
       return null;
+    } finally {
+      setLoading(false);
     }
-
-    message.success("Successfully logged in");
-    return session;
   };
 
   /**

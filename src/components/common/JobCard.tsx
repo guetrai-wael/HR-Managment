@@ -10,25 +10,7 @@ import {
   EditOutlined,
   DeleteOutlined,
 } from "@ant-design/icons";
-
-interface JobCardProps {
-  title: string;
-  description: string;
-  status?: string;
-  deadline?: string | Date;
-  icon?: "hot" | "star" | "featured";
-  onClick?: () => void;
-  onActionClick?: () => void;
-  actionText?: string;
-  // New action props
-  onApplyClick?: () => void;
-  onEditClick?: () => void;
-  onDeleteClick?: () => void;
-  // Show/hide controls based on user role
-  showApplyButton?: boolean;
-  showEditButton?: boolean;
-  showDeleteButton?: boolean;
-}
+import { JobCardProps } from "../../types";
 
 const JobCard: React.FC<JobCardProps> = ({
   title,
@@ -108,18 +90,18 @@ const JobCard: React.FC<JobCardProps> = ({
       {/* Card Content */}
       <div className="flex flex-col p-4 pb-0 gap-3 flex-grow">
         {/* Header with icon and title */}
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-3 flex-grow">
-            <div className="w-11 h-11 rounded-lg flex items-center justify-center bg-gradient-to-r from-[#29359B] to-[#6068CA]">
+        <div className="job-card-header">
+          <div className="flex items-center gap-3 min-w-0 max-w-[80%]">
+            <div className="w-11 h-11 rounded-lg flex-shrink-0 flex items-center justify-center bg-gradient-to-r from-[#29359B] to-[#6068CA]">
               {iconMap[icon]}
             </div>
-            <h3 className="text-base font-medium text-gray-900 truncate max-w-[190px]">
+            <h3 className="job-card-title text-base font-medium text-gray-900">
               {title}
             </h3>
           </div>
 
-          {/* Add action icons to the header */}
-          <div className="flex space-x-1">
+          {/* Action icons with guaranteed space */}
+          <div className="job-card-actions">
             {showEditButton && (
               <Tooltip title="Edit job">
                 <Button
@@ -197,7 +179,7 @@ const JobCard: React.FC<JobCardProps> = ({
       {/* Action Footer */}
       <div className="mt-auto">
         <Divider className="!m-0" />
-        <div className="flex justify-between items-center px-4 py-3">
+        <div className="flex flex-wrap justify-between items-center px-4 py-3 gap-2">
           {/* View Details Action */}
           <Button
             type="link"
@@ -223,7 +205,7 @@ const JobCard: React.FC<JobCardProps> = ({
                 }}
                 className="bg-[#6941C6] hover:bg-[#8662e3]"
               >
-                Apply
+                <span className="hidden sm:inline">Apply</span>
               </Button>
             </Tooltip>
           )}

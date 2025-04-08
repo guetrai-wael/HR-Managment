@@ -31,7 +31,7 @@ const Sidebar: React.FC = () => {
       {
         icon: <IconClipboardText stroke={1.5} />,
         text: "Applications", // Changed from "Registrations" to be more clear
-        path: "/registrations",
+        path: "/applications",
       },
       { icon: <IconUserShare stroke={1.5} />, text: "Leaves", path: "/leaves" },
       {

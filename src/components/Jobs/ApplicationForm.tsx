@@ -2,17 +2,10 @@ import React, { useState } from "react";
 import { Form, Input, Upload, Button, message } from "antd";
 import { UploadOutlined } from "@ant-design/icons";
 import type { UploadFile } from "antd/es/upload/interface";
-import supabase from "../../services/supabaseClient";
-import { useUser } from "../../hooks";
+import { useUser, useApplicationActions } from "../../hooks";
+import { ApplicationFormProps } from "../../types";
 
 const { TextArea } = Input;
-
-interface ApplicationFormProps {
-  jobId: string | number;
-  jobTitle: string;
-  onSuccess: () => void;
-  onCancel: () => void;
-}
 
 const ApplicationForm: React.FC<ApplicationFormProps> = ({
   jobId,
@@ -22,8 +15,9 @@ const ApplicationForm: React.FC<ApplicationFormProps> = ({
 }) => {
   const [form] = Form.useForm();
   const [fileList, setFileList] = useState<UploadFile[]>([]);
-  const [submitting, setSubmitting] = useState(false);
   const { user } = useUser();
+  const { handleSubmitApplication, loading: submitting } =
+    useApplicationActions();
 
   const handleSubmit = async (values: any) => {
     if (!user) {
@@ -31,89 +25,30 @@ const ApplicationForm: React.FC<ApplicationFormProps> = ({
       return;
     }
 
-    setSubmitting(true);
     try {
-      // Log what we're submitting for debugging
-      console.log("Submitting application:", {
-        job_id: jobId,
-        user_id: user.id,
-        cover_letter: values.coverLetter
-          ? values.coverLetter.substring(0, 20) + "..."
-          : null,
-      });
-
-      // First upload the resume if provided
-      let resumeUrl = null;
-      if (fileList.length > 0 && fileList[0].originFileObj) {
-        const file = fileList[0].originFileObj;
-
-        // Create a folder with user ID to organize files
-        const filePath = `${user.id}/${Date.now()}-${file.name}`;
-
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from("resumes")
-          .upload(filePath, file);
-
-        if (uploadError) {
-          console.error("Resume upload error:", uploadError);
-          throw new Error(`Resume upload failed: ${uploadError.message}`);
-        }
-
-        // Get the public URL if bucket is public, or signed URL if private
-        const { data: urlData } = await supabase.storage
-          .from("resumes")
-          .getPublicUrl(filePath);
-
-        resumeUrl = urlData?.publicUrl || null;
-        console.log("Resume uploaded successfully:", resumeUrl);
-      }
-
-      // Prepare application data with all required fields
+      // Prepare application data
       const applicationData = {
         job_id: jobId,
         user_id: user.id,
         cover_letter: values.coverLetter || "",
-        resume_url: resumeUrl,
-        status: "pending",
-        applied_at: new Date().toISOString(),
       };
-      // Add this check before submitting the application
-      const { data: existingApp, error: checkError } = await supabase
-        .from("applications")
-        .select()
-        .eq("job_id", jobId)
-        .eq("user_id", user.id)
-        .maybeSingle();
 
-      if (existingApp) {
-        message.warning("You have already applied for this job!");
-        return;
+      // Get the file from fileList if available
+      const file =
+        fileList.length > 0 && fileList[0].originFileObj
+          ? fileList[0].originFileObj
+          : undefined;
+
+      // Submit application using the service
+      const success = await handleSubmitApplication(applicationData, file);
+
+      if (success) {
+        form.resetFields();
+        setFileList([]);
+        onSuccess();
       }
-
-      // Submit the application
-      const { data, error } = await supabase
-        .from("applications")
-        .insert(applicationData)
-        .select();
-
-      if (error) {
-        console.error("Application submission error:", error);
-        throw error;
-      }
-
-      console.log("Application submitted successfully:", data);
-      message.success("Application submitted successfully!");
-      form.resetFields();
-      setFileList([]);
-      onSuccess();
     } catch (error: any) {
       console.error("Error submitting application:", error);
-      // Show a more detailed error message to help debug
-      message.error(
-        `Failed to submit application: ${error.message || "Unknown error"}`
-      );
-    } finally {
-      setSubmitting(false);
     }
   };
 
@@ -165,9 +100,16 @@ const ApplicationForm: React.FC<ApplicationFormProps> = ({
         </Upload>
       </Form.Item>
 
-      <div className="flex justify-end gap-4 mt-6">
-        <Button onClick={onCancel}>Cancel</Button>
-        <Button type="primary" htmlType="submit" loading={submitting}>
+      <div className="form-actions-container flex-col-reverse sm:flex-row sm:justify-end">
+        <Button onClick={onCancel} className="!w-full sm:!w-auto">
+          Cancel
+        </Button>
+        <Button
+          type="primary"
+          htmlType="submit"
+          loading={submitting}
+          className="!w-full sm:!w-auto"
+        >
           Submit Application
         </Button>
       </div>

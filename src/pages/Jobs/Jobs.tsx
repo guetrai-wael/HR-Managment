@@ -4,24 +4,14 @@ import { PlusOutlined } from "@ant-design/icons";
 import { Modal, message, Spin } from "antd";
 import { Header, SectionHeader, JobCard } from "../../components/common/index";
 import { JobForm } from "../../components/Jobs/index";
-import supabase from "../../services/supabaseClient";
-import { useUser, useRole } from "../../hooks";
-
-// Define job interface
-interface Job {
-  id: number;
-  title: string;
-  description: string;
-  status: string;
-  deadline: string;
-  department: string;
-  // Add other fields as needed
-}
+import { useRole, useJobActions } from "../../hooks";
+import { fetchJobs } from "../../services/api/jobService";
+import { Job } from "../../types";
 
 const Jobs = () => {
   const navigate = useNavigate();
-  const { user } = useUser();
-  const { isAdmin, loading: roleLoading } = useRole();
+  const { isAdmin } = useRole();
+  const { handleDeleteJob } = useJobActions();
 
   // State variables
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -30,25 +20,13 @@ const Jobs = () => {
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [activeTab, setActiveTab] = useState("all");
 
-  // Fetch jobs from the database
-  const fetchJobs = async () => {
+  // Use the new service function instead of direct Supabase call
+  const loadJobs = async () => {
     setLoading(true);
     try {
-      let query = supabase
-        .from("jobs")
-        .select("*")
-        .order("posted_at", { ascending: false });
-
-      // Apply department filter if not "all"
-      if (activeTab !== "all") {
-        query = query.eq("department", activeTab);
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-
-      setJobs(data || []);
+      // Replace the direct Supabase call with our service function
+      const data = await fetchJobs(activeTab !== "all" ? activeTab : undefined);
+      setJobs(data);
     } catch (error) {
       console.error("Error fetching jobs:", error);
       message.error("Failed to load jobs");
@@ -59,7 +37,7 @@ const Jobs = () => {
 
   // Fetch jobs on initial load and when activeTab changes
   useEffect(() => {
-    fetchJobs();
+    loadJobs();
   }, [activeTab]);
 
   const handleViewJob = (id: number) => {
@@ -67,7 +45,7 @@ const Jobs = () => {
   };
 
   const handleAddJob = () => {
-    setSelectedJob(null); // Reset selected job (for new job form)
+    setSelectedJob(null);
     setJobFormVisible(true);
   };
 
@@ -76,17 +54,11 @@ const Jobs = () => {
     setJobFormVisible(true);
   };
 
-  const handleDeleteJob = async (id: number) => {
-    try {
-      const { error } = await supabase.from("jobs").delete().eq("id", id);
-
-      if (error) throw error;
-
-      message.success("Job deleted successfully");
-      fetchJobs(); // Refresh the job list
-    } catch (error) {
-      console.error("Error deleting job:", error);
-      message.error("Failed to delete job");
+  // Use the service function instead of direct Supabase call
+  const onDeleteJob = async (id: number) => {
+    const success = await handleDeleteJob(id);
+    if (success) {
+      loadJobs(); // Refresh the job list
     }
   };
 
@@ -134,7 +106,7 @@ const Jobs = () => {
             No jobs available in this category
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
             {jobs.map((job) => (
               <JobCard
                 key={job.id}
@@ -146,10 +118,10 @@ const Jobs = () => {
                 onActionClick={() => handleViewJob(job.id)}
                 onApplyClick={() => handleViewJob(job.id)}
                 onEditClick={() => handleEditJob(job)}
-                onDeleteClick={() => handleDeleteJob(job.id)}
-                showApplyButton={!isAdmin} // Only show apply for non-admins
-                showEditButton={isAdmin} // Only show edit for admins
-                showDeleteButton={isAdmin} // Only show delete for admins
+                onDeleteClick={() => onDeleteJob(job.id)}
+                showApplyButton={!isAdmin}
+                showEditButton={isAdmin}
+                showDeleteButton={isAdmin}
               />
             ))}
           </div>
@@ -162,14 +134,16 @@ const Jobs = () => {
         open={jobFormVisible}
         onCancel={() => setJobFormVisible(false)}
         footer={null}
-        width={800}
+        width="95%"
+        style={{ maxWidth: "800px" }}
+        className="responsive-modal"
       >
         <JobForm
           jobId={selectedJob?.id}
           initialValues={selectedJob}
           onSuccess={() => {
             setJobFormVisible(false);
-            fetchJobs();
+            loadJobs();
           }}
           onCancel={() => setJobFormVisible(false)}
         />

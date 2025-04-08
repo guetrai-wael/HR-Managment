@@ -24,7 +24,7 @@ interface Application {
   };
 }
 
-const Registrations: React.FC = () => {
+const Applications: React.FC = () => {
   const { user } = useUser();
   const { isAdmin, loading: roleLoading } = useRole();
   const [applications, setApplications] = useState<Application[]>([]);
@@ -322,6 +322,8 @@ const Registrations: React.FC = () => {
             dataSource={applications}
             rowKey="id"
             pagination={{ pageSize: 10 }}
+            scroll={{ x: "max-content" }}
+            className="responsive-table"
           />
         )}
       </div>
@@ -336,7 +338,8 @@ const Registrations: React.FC = () => {
             Close
           </Button>,
         ]}
-        width={700}
+        width="95%"
+        style={{ maxWidth: "800px" }}
       >
         {selectedApplication && (
           <div className="space-y-4">
@@ -388,4 +391,4 @@ const Registrations: React.FC = () => {
   );
 };
 
-export default Registrations;
+export default Applications;

@@ -1,21 +1,21 @@
-import React from "react";
 import { Navigate } from "react-router-dom";
-import { useRole } from "../hooks";
 import { Spin } from "antd";
+import { useUser, useRole } from "../hooks";
 
-interface AdminGuardProps {
-  children: React.ReactNode;
-}
+const AdminGuard = ({ children }: { children: React.ReactNode }) => {
+  const { user, loading: userLoading } = useUser();
+  const { isAdmin, loading: roleLoading } = useRole();
 
-const AdminGuard: React.FC<AdminGuardProps> = ({ children }) => {
-  const { isAdmin, loading } = useRole();
-
-  if (loading) {
+  if (userLoading || roleLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <Spin size="large" />
       </div>
     );
+  }
+
+  if (!user) {
+    return <Navigate to="/login" />;
   }
 
   if (!isAdmin) {

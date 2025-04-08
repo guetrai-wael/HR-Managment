@@ -1,11 +1,6 @@
 import React from "react";
 import { Typography } from "antd";
-
-interface HeaderProps {
-  title: string;
-  subtitle?: string;
-  children?: React.ReactNode;
-}
+import { HeaderProps } from "../../types";
 
 const Header: React.FC<HeaderProps> = ({ title, subtitle, children }) => {
   return (

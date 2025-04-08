@@ -56,6 +56,45 @@
     display: flex;
     flex-direction: column;
     height: 100%;
+    width: 100%;
+    transition: all 0.2s ease;
+    position: relative;
+    /* Add position relative for absolute positioning inside */
+}
+
+/* Card content containment */
+.job-card-content {
+    flex: 1;
+    min-width: 0;
+    /* Important for text truncation */
+}
+
+/* Header with flex layout for proper spacing */
+.job-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    width: 100%;
+    gap: 8px;
+}
+
+/* Title truncation to prevent overflow */
+.job-card-title {
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: calc(100% - 70px);
+    /* Allow space for action buttons */
+}
+
+/* Action buttons container - FIXED: This was the missing key connection */
+.job-card-actions {
+    display: flex;
+    flex-shrink: 0;
+    gap: 4px;
+    margin-left: auto;
+    /* Ensure it stays right-aligned */
 }
 
 /* Ensure card footer stays at the bottom */
@@ -67,5 +106,139 @@
 .job-card:hover {
     transform: translateY(-2px);
     box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
-    transition: all 0.2s ease;
+}
+
+/* Secondary/Cancel button styles to match primary buttons */
+.ant-btn-default {
+    height: 44px !important;
+    border-radius: 8px !important;
+    border-color: #d9d9d9 !important;
+    font-weight: 500 !important;
+    font-size: 16px !important;
+}
+
+/* Consistent button spacing in form actions */
+.form-actions-container {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+}
+
+.form-actions-container .ant-btn {
+    flex: 1;
+}
+
+@media (min-width: 640px) {
+    .form-actions-container .ant-btn {
+        flex: 0 0 auto;
+        min-width: 120px;
+    }
+}
+
+/* Enhanced responsive design styles */
+.responsive-table {
+    overflow-x: auto;
+    width: 100%;
+}
+
+/* CONSOLIDATED MOBILE MEDIA QUERY - all mobile styles in one place */
+@media (max-width: 640px) {
+
+    /* Table styles for mobile */
+    .responsive-table .ant-table-cell {
+        padding: 8px 4px !important;
+        white-space: normal !important;
+        word-break: break-word !important;
+    }
+
+    /* Hide less important columns on mobile */
+    .hide-on-mobile {
+        display: none !important;
+    }
+
+    /* Make form controls full width on mobile */
+    .ant-form-item .ant-input,
+    .ant-form-item .ant-select,
+    .ant-form-item .ant-picker,
+    .ant-form-item .ant-btn {
+        width: 100% !important;
+    }
+
+    /* Improved button layout for mobile */
+    .ant-btn {
+        margin-bottom: 8px !important;
+    }
+
+    /* Better form layouts */
+    .ant-form-item-label {
+        padding-bottom: 4px !important;
+    }
+
+    /* Improve modal padding */
+    .ant-modal-body {
+        padding: 16px 12px !important;
+    }
+
+    /* More readable text on small screens */
+    .ant-descriptions-item-label,
+    .ant-descriptions-item-content {
+        padding: 8px !important;
+        font-size: 14px !important;
+    }
+
+    /* Adjust job card display */
+    .job-card {
+        min-height: unset !important;
+    }
+
+    /* FIXED: Correctly target job-card-actions class */
+    .job-card-actions .ant-btn {
+        min-width: 32px !important;
+        width: 32px !important;
+        height: 32px !important;
+        padding: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+
+    /* More aggressive z-index to ensure action buttons always appear above content */
+    .job-card-actions {
+        z-index: 5 !important;
+    }
+
+    /* Ensure title doesn't overflow on mobile */
+    .job-card-title {
+        max-width: calc(100% - 80px) !important;
+        font-size: 15px !important;
+    }
+
+    /* Adjust header sizing on mobile */
+    h1.text-3xl {
+        font-size: 1.5rem !important;
+    }
+
+    /* Better modal widths */
+    .ant-modal {
+        max-width: 95% !important;
+        margin: 0 auto !important;
+    }
+
+    /* Remove default button padding on mobile */
+    .ant-btn-sm {
+        padding: 0 8px !important;
+    }
+}
+
+/* Better spacing on medium screens */
+@media (min-width: 641px) and (max-width: 1024px) {
+    .px-8 {
+        padding-left: 1.5rem !important;
+        padding-right: 1.5rem !important;
+    }
+
+    /* Slightly adjust table for better readability */
+    .ant-table-cell {
+        padding: 12px 8px !important;
+    }
 }

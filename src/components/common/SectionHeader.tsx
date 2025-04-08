@@ -1,23 +1,6 @@
 import React, { useState, memo } from "react";
 import { Button, Divider } from "antd";
-
-interface TabItem {
-  key: string;
-  label: string;
-}
-
-interface SectionHeaderProps {
-  title: string;
-  subtitle?: string;
-  tabs: TabItem[];
-  defaultActiveTab?: string;
-  onTabChange?: (key: string) => void;
-  actionButton?: {
-    icon?: React.ReactNode;
-    label: string;
-    onClick: () => void;
-  };
-}
+import { SectionHeaderProps } from "../../types";
 
 const SectionHeader: React.FC<SectionHeaderProps> = memo(
   ({ title, subtitle, tabs, defaultActiveTab, onTabChange, actionButton }) => {

@@ -1,12 +1,7 @@
 import { FC } from "react";
 import { Button } from "antd";
 import { useAuth } from "../../hooks/useAuth";
-
-interface GoogleSignInButtonProps {
-  label: string;
-  onSuccess?: () => void;
-  onError?: (error: Error) => void;
-}
+import { GoogleSignInButtonProps } from "../../types";
 
 const GoogleSignInButton: FC<GoogleSignInButtonProps> = ({
   label,

@@ -1,18 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { Form, Input, Select, DatePicker, Button, message } from "antd";
-import supabase from "../../services/supabaseClient";
-import { useUser } from "../../hooks";
+import { Form, Input, Select, DatePicker, Button } from "antd";
+import { useUser, useJobActions } from "../../hooks";
 import dayjs from "dayjs";
+import { Job, JobFormProps } from "../../types";
 
 const { TextArea } = Input;
 const { Option } = Select;
-
-interface JobFormProps {
-  jobId?: number; // Optional - if provided, we're editing an existing job
-  initialValues?: any;
-  onSuccess: () => void;
-  onCancel: () => void;
-}
 
 const JobForm: React.FC<JobFormProps> = ({
   jobId,
@@ -22,8 +15,13 @@ const JobForm: React.FC<JobFormProps> = ({
 }) => {
   const [form] = Form.useForm();
   const { user } = useUser();
-  const [submitting, setSubmitting] = useState(false);
-  const [departments, setDepartments] = useState<string[]>([
+  const {
+    handleCreateJob,
+    handleUpdateJob,
+    loading: submitting,
+  } = useJobActions();
+
+  const [departments] = useState<string[]>([
     "Engineering",
     "Marketing",
     "Finance",
@@ -47,12 +45,9 @@ const JobForm: React.FC<JobFormProps> = ({
   }, [form, initialValues, isEditMode]);
 
   const handleSubmit = async (values: any) => {
-    setSubmitting(true);
     try {
-      console.log("Submitting job with values:", values);
-
       // Ensure all required fields are present
-      const jobData = {
+      const jobData: Partial<Job> = {
         title: values.title || "Untitled Job",
         description: values.description || "No description provided",
         requirements: values.requirements || "No requirements specified",
@@ -60,36 +55,35 @@ const JobForm: React.FC<JobFormProps> = ({
           values.responsibilities || "No responsibilities specified",
         department: values.department || "General",
         location: values.location || "Remote",
-        status: "Open", // Default status
+        status: values.status || "Open",
         salary: values.salary || null, // Optional field
         deadline: values.deadline
           ? new Date(values.deadline).toISOString().split("T")[0]
           : null,
-        posted_by: user?.id,
       };
 
-      console.log("Prepared job data:", jobData);
-
-      const { data, error } = await supabase
-        .from("jobs")
-        .insert(jobData)
-        .select();
-
-      if (error) {
-        console.error("Error creating job:", error);
-        throw error;
+      // Add posted_by only for new jobs
+      if (!isEditMode && user?.id) {
+        jobData.posted_by = user.id;
       }
 
-      console.log("Job created successfully:", data);
-      message.success("Job posted successfully!");
-      form.resetFields();
-      onSuccess();
-      onCancel();
+      let success = false;
+      if (isEditMode && jobId) {
+        // Use the hook to update
+        const updatedJob = await handleUpdateJob(jobId, jobData);
+        success = !!updatedJob;
+      } else {
+        // Use the hook to create
+        const newJob = await handleCreateJob(jobData);
+        success = !!newJob;
+      }
+
+      if (success) {
+        form.resetFields();
+        onSuccess();
+      }
     } catch (error: any) {
       console.error("Failed to save job:", error);
-      message.error(`Failed to save job: ${error.message || "Unknown error"}`);
-    } finally {
-      setSubmitting(false);
     }
   };
 
@@ -99,7 +93,7 @@ const JobForm: React.FC<JobFormProps> = ({
       layout="vertical"
       onFinish={handleSubmit}
       initialValues={{
-        status: "Open",
+        status: "New",
         department: "Engineering",
       }}
     >
@@ -147,8 +141,8 @@ const JobForm: React.FC<JobFormProps> = ({
         rules={[{ required: true, message: "Please select a status" }]}
       >
         <Select>
-          <Option value="Open">Open</Option>
           <Option value="New">New</Option>
+          <Option value="Open">Open</Option>
           <Option value="Featured">Featured</Option>
           <Option value="Closed">Closed</Option>
         </Select>
@@ -202,9 +196,16 @@ const JobForm: React.FC<JobFormProps> = ({
         />
       </Form.Item>
 
-      <div className="flex justify-end gap-4 mt-6">
-        <Button onClick={onCancel}>Cancel</Button>
-        <Button type="primary" htmlType="submit" loading={submitting}>
+      <div className="form-actions-container flex-col-reverse sm:flex-row sm:justify-end">
+        <Button onClick={onCancel} className="!w-full sm:!w-auto">
+          Cancel
+        </Button>
+        <Button
+          type="primary"
+          htmlType="submit"
+          loading={submitting}
+          className="!w-full sm:!w-auto"
+        >
           {isEditMode ? "Update Job" : "Post Job"}
         </Button>
       </div>

@@ -18,8 +18,6 @@ export const useRole = () => {
       }
 
       try {
-        console.log("Checking role for user:", user.id);
-        // Check if user has admin role
         const { data: adminData, error: adminError } = await supabase.rpc(
           "has_role",
           {
@@ -29,8 +27,6 @@ export const useRole = () => {
         );
 
         if (adminError) throw adminError;
-
-        // Check if user has employee role
         const { data: employeeData, error: employeeError } = await supabase.rpc(
           "has_role",
           {
@@ -41,12 +37,6 @@ export const useRole = () => {
 
         if (employeeError) throw employeeError;
 
-        console.log(
-          "User roles - Admin:",
-          adminData,
-          "Employee:",
-          employeeData
-        );
         setIsAdmin(adminData || false);
         setIsEmployee(employeeData || false);
       } catch (error) {

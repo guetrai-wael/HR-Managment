@@ -9,6 +9,9 @@ import {
   Path,
 } from "react-hook-form";
 
+// Export all models
+export * from "./models";
+
 export interface IRouteItem {
   path: string;
   element: ReactNode;
@@ -65,6 +68,7 @@ export interface AuthFormValues {
   rememberMe: boolean;
   [key: string]: any; // To support dynamic fields
 }
+
 // TypeScript interface for the form values
 export interface FormValues {
   email: string;
@@ -72,6 +76,7 @@ export interface FormValues {
   name?: string;
   rememberMe: boolean;
 }
+
 /**
  * Props for the AuthForm component
  */
@@ -89,4 +94,67 @@ export interface ILoginData {
   name?: string;
   email: string;
   password: string;
+}
+
+export interface GoogleSignInButtonProps {
+  label: string;
+  onSuccess?: () => void;
+  onError?: (error: Error) => void;
+}
+
+export interface HeaderProps {
+  title: string;
+  subtitle?: string;
+  children?: React.ReactNode;
+}
+
+export interface JobCardProps {
+  title: string;
+  description: string;
+  status?: string;
+  deadline?: string | Date;
+  icon?: "hot" | "star" | "featured";
+  onClick?: () => void;
+  onActionClick?: () => void;
+  actionText?: string;
+  // New action props
+  onApplyClick?: () => void;
+  onEditClick?: () => void;
+  onDeleteClick?: () => void;
+  // Show/hide controls based on user role
+  showApplyButton?: boolean;
+  showEditButton?: boolean;
+  showDeleteButton?: boolean;
+}
+
+interface TabItem {
+  key: string;
+  label: string;
+}
+
+export interface SectionHeaderProps {
+  title: string;
+  subtitle?: string;
+  tabs: TabItem[];
+  defaultActiveTab?: string;
+  onTabChange?: (key: string) => void;
+  actionButton?: {
+    icon?: React.ReactNode;
+    label: string;
+    onClick: () => void;
+  };
+}
+
+export interface ApplicationFormProps {
+  jobId: string | number;
+  jobTitle: string;
+  onSuccess: () => void;
+  onCancel: () => void;
+}
+
+export interface JobFormProps {
+  jobId?: number;
+  initialValues?: any;
+  onSuccess: () => void;
+  onCancel: () => void;
 }

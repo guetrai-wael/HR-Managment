@@ -6,20 +6,8 @@ import { Header } from "../../components/common";
 import { ApplicationForm } from "../../components/Jobs/index";
 import supabase from "../../services/supabaseClient";
 import { useUser, useRole } from "../../hooks";
-
-interface Job {
-  id: number;
-  title: string;
-  description: string;
-  requirements: string;
-  responsibilities: string;
-  status: string;
-  deadline: string;
-  location: string;
-  salary: string;
-  department: string;
-  posted_at: string;
-}
+import { getJobById } from "../../services/api/jobService"; // Import the service
+import { Job } from "../../types";
 
 const JobDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -37,17 +25,9 @@ const JobDetails: React.FC = () => {
     const fetchJob = async () => {
       setLoading(true);
       try {
-        // Fetch job details
-        const { data, error } = await supabase
-          .from("jobs")
-          .select("*")
-          .eq("id", id)
-          .single();
-
-        if (error) throw error;
-        if (!data) throw new Error("Job not found");
-
-        setJob(data);
+        // Use the service to get job details instead of direct Supabase call
+        const jobData = await getJobById(id);
+        setJob(jobData);
 
         // Check if user already applied
         if (user) {
@@ -191,7 +171,9 @@ const JobDetails: React.FC = () => {
         open={applyModalVisible}
         onCancel={() => setApplyModalVisible(false)}
         footer={null}
-        width={700}
+        width="95%"
+        style={{ maxWidth: "800px" }}
+        className="responsive-modal"
       >
         <ApplicationForm
           jobId={jobData.id}

@@ -1,10 +1,10 @@
 @import "tailwindcss";
 
-/* 
- * Override Ant Design Button styles to match design requirements
- * Primary color: #7c3aed (purple)
- * Hover color: #6d28d9 (darker purple)
- */
+/*----------------------------------------*/
+/* GLOBAL BUTTON STYLES                   */
+/*----------------------------------------*/
+
+/* Primary button styles */
 .ant-btn-primary {
     background-color: #7c3aed !important;
     border-color: #7c3aed !important;
@@ -32,83 +32,7 @@
     opacity: 0.7;
 }
 
-/* Override button text styles */
-.ant-btn {
-    font-weight: 500 !important;
-    font-size: 16px !important;
-}
-
-/* Make the job card responsive but maintain proportions */
-@media (max-width: 768px) {
-    .ant-btn-primary {
-        height: 40px !important;
-    }
-
-    /* Smaller spacing on mobile */
-    .px-8 {
-        padding-left: 1rem;
-        padding-right: 1rem;
-    }
-}
-
-/* Keep all job cards the same height regardless of content */
-.job-card {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    width: 100%;
-    transition: all 0.2s ease;
-    position: relative;
-    /* Add position relative for absolute positioning inside */
-}
-
-/* Card content containment */
-.job-card-content {
-    flex: 1;
-    min-width: 0;
-    /* Important for text truncation */
-}
-
-/* Header with flex layout for proper spacing */
-.job-card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    width: 100%;
-    gap: 8px;
-}
-
-/* Title truncation to prevent overflow */
-.job-card-title {
-    font-weight: 500;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: calc(100% - 70px);
-    /* Allow space for action buttons */
-}
-
-/* Action buttons container - FIXED: This was the missing key connection */
-.job-card-actions {
-    display: flex;
-    flex-shrink: 0;
-    gap: 4px;
-    margin-left: auto;
-    /* Ensure it stays right-aligned */
-}
-
-/* Ensure card footer stays at the bottom */
-.job-card-footer {
-    margin-top: auto;
-}
-
-/* Improved hover state for job cards */
-.job-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
-}
-
-/* Secondary/Cancel button styles to match primary buttons */
+/* Default/Secondary button styles */
 .ant-btn-default {
     height: 44px !important;
     border-radius: 8px !important;
@@ -117,7 +41,13 @@
     font-size: 16px !important;
 }
 
-/* Consistent button spacing in form actions */
+/* Common button styles */
+.ant-btn {
+    font-weight: 500 !important;
+    font-size: 16px !important;
+}
+
+/* Form action buttons container */
 .form-actions-container {
     display: flex;
     gap: 12px;
@@ -128,35 +58,134 @@
     flex: 1;
 }
 
-@media (min-width: 640px) {
-    .form-actions-container .ant-btn {
-        flex: 0 0 auto;
-        min-width: 120px;
-    }
-}
+/*----------------------------------------*/
+/* JOB CARD STYLES                        */
+/*----------------------------------------*/
 
-/* Enhanced responsive design styles */
-.responsive-table {
-    overflow-x: auto;
+.job-card {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
     width: 100%;
+    transition: all 0.2s ease;
+    position: relative;
 }
 
-/* CONSOLIDATED MOBILE MEDIA QUERY - all mobile styles in one place */
+.job-card-content {
+    flex: 1;
+    min-width: 0;
+    /* Important for text truncation */
+}
+
+.job-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    width: 100%;
+    gap: 8px;
+}
+
+.job-card-title {
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: calc(100% - 70px);
+}
+
+.job-card-actions {
+    display: flex;
+    flex-shrink: 0;
+    gap: 4px;
+    margin-left: auto;
+}
+
+.job-card-footer {
+    margin-top: auto;
+}
+
+.job-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+/*----------------------------------------*/
+/* JOB DETAILS STYLES                     */
+/*----------------------------------------*/
+
+/* Job details table layout */
+.job-details-table {
+    max-width: 600px;
+    /* Appropriate width for single-column layout */
+}
+
+/* Description component styling */
+.job-details-descriptions .ant-descriptions-item {
+    padding: 12px !important;
+}
+
+.job-details-descriptions .ant-descriptions-item-label {
+    width: 140px;
+    background-color: #f9fafb;
+}
+
+.job-details-descriptions .ant-descriptions-item-label,
+.job-details-descriptions .ant-descriptions-item-content {
+    word-break: break-word;
+}
+
+/*----------------------------------------*/
+/* APPLICATION STYLES                     */
+/*----------------------------------------*/
+
+/* Application table */
+.applications-table .ant-table-thead>tr>th {
+    background-color: #f9fafb;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.applications-table .ant-table-row:hover {
+    background-color: #f5f8ff;
+}
+
+/* Application filters */
+.application-filters .ant-form-item {
+    margin-bottom: 12px;
+}
+
+/* Application details modal */
+.application-details-modal .ant-descriptions-item-label {
+    width: 120px;
+    font-weight: 500;
+}
+
+/* Utility for truncated columns */
+.truncate-column {
+    max-width: 150px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/*----------------------------------------*/
+/* RESPONSIVE STYLES                      */
+/*----------------------------------------*/
+
+/* Mobile styles (small screens) */
 @media (max-width: 640px) {
 
-    /* Table styles for mobile */
-    .responsive-table .ant-table-cell {
-        padding: 8px 4px !important;
-        white-space: normal !important;
-        word-break: break-word !important;
+    /* Global styles */
+    .px-8 {
+        padding-left: 1rem;
+        padding-right: 1rem;
     }
 
-    /* Hide less important columns on mobile */
-    .hide-on-mobile {
-        display: none !important;
+    /* Form and button styles */
+    .ant-btn-primary {
+        height: 40px !important;
     }
 
-    /* Make form controls full width on mobile */
     .ant-form-item .ant-input,
     .ant-form-item .ant-select,
     .ant-form-item .ant-picker,
@@ -164,34 +193,44 @@
         width: 100% !important;
     }
 
-    /* Improved button layout for mobile */
     .ant-btn {
         margin-bottom: 8px !important;
     }
 
-    /* Better form layouts */
+    .ant-btn-sm {
+        padding: 0 8px !important;
+    }
+
     .ant-form-item-label {
         padding-bottom: 4px !important;
     }
 
-    /* Improve modal padding */
+    /* Modal styles */
+    .ant-modal {
+        max-width: 95% !important;
+        margin: 0 auto !important;
+    }
+
     .ant-modal-body {
         padding: 16px 12px !important;
     }
 
-    /* More readable text on small screens */
+    /* Description items */
     .ant-descriptions-item-label,
     .ant-descriptions-item-content {
         padding: 8px !important;
         font-size: 14px !important;
     }
 
-    /* Adjust job card display */
+    /* Job card styles */
     .job-card {
         min-height: unset !important;
     }
 
-    /* FIXED: Correctly target job-card-actions class */
+    .job-card-actions {
+        z-index: 5 !important;
+    }
+
     .job-card-actions .ant-btn {
         min-width: 32px !important;
         width: 32px !important;
@@ -202,43 +241,108 @@
         justify-content: center !important;
     }
 
-    /* More aggressive z-index to ensure action buttons always appear above content */
-    .job-card-actions {
-        z-index: 5 !important;
-    }
-
-    /* Ensure title doesn't overflow on mobile */
     .job-card-title {
         max-width: calc(100% - 80px) !important;
         font-size: 15px !important;
     }
 
-    /* Adjust header sizing on mobile */
+    /* Header styles */
     h1.text-3xl {
         font-size: 1.5rem !important;
     }
 
-    /* Better modal widths */
-    .ant-modal {
-        max-width: 95% !important;
-        margin: 0 auto !important;
+    /* Table styles */
+    .responsive-table .ant-table-cell {
+        padding: 8px 4px !important;
+        white-space: normal !important;
+        word-break: break-word !important;
     }
 
-    /* Remove default button padding on mobile */
-    .ant-btn-sm {
-        padding: 0 8px !important;
+    .hide-on-mobile {
+        display: none !important;
+    }
+
+    /* Application table styles */
+    .applications-table .ant-table-cell {
+        padding: 8px !important;
+    }
+
+    .applications-table .ant-pagination-item,
+    .applications-table .ant-pagination-prev,
+    .applications-table .ant-pagination-next {
+        min-width: 28px !important;
+        height: 28px !important;
+        line-height: 26px !important;
+    }
+
+    .applications-table .ant-pagination-total-text {
+        display: none;
+    }
+
+    .applications-table .ant-btn {
+        min-height: 32px;
+        min-width: 32px;
+    }
+
+    /* Job details styles */
+    .job-details-descriptions {
+        font-size: 14px;
+    }
+
+    .job-details-descriptions .ant-descriptions-item-label,
+    .job-details-descriptions .ant-descriptions-item-content {
+        padding: 10px 12px !important;
+    }
+
+    /* Modal styles */
+    .job-application-modal .ant-modal-body {
+        padding: 12px !important;
+        max-height: 80vh;
+        overflow-y: auto;
     }
 }
 
-/* Better spacing on medium screens */
+/* Tablet styles (medium screens) */
+@media (max-width: 768px) {
+
+    /* Application filters */
+    .application-filters .ant-form-item {
+        margin-bottom: 8px;
+    }
+
+    .application-filters .ant-form-item-label {
+        padding-bottom: 4px;
+    }
+
+    .application-filters .ant-select,
+    .application-filters .ant-picker,
+    .application-filters .ant-input {
+        min-height: 36px;
+    }
+
+    /* Application modal */
+    .application-details-modal .ant-modal-body {
+        max-height: 70vh;
+        overflow-y: auto;
+    }
+}
+
+/* Medium screens */
 @media (min-width: 641px) and (max-width: 1024px) {
     .px-8 {
         padding-left: 1.5rem !important;
         padding-right: 1.5rem !important;
     }
 
-    /* Slightly adjust table for better readability */
     .ant-table-cell {
         padding: 12px 8px !important;
+    }
+}
+
+/* Desktop styles */
+@media (min-width: 640px) {
+    .form-actions-container .ant-btn {
+        flex: 0 0 auto;
+        min-width: 120px;
     }
 }

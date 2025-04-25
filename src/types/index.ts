@@ -8,6 +8,9 @@ import {
   FieldValues,
   Path,
 } from "react-hook-form";
+import { Dayjs } from "dayjs";
+import { Job } from "./models";
+import { UploadFile } from "antd/es/upload/interface";
 
 // Export all models
 export * from "./models";
@@ -44,7 +47,9 @@ export interface InputFieldProps<T extends FieldValues> {
   type: string; // Input type (text, email, password, etc.)
   placeholder: string; // Placeholder text
   control: Control<T>; // React Hook Form control object
-  error?: FieldError | Merge<FieldError, FieldErrorsImpl<any>>; // Error from form validation
+  error?:
+    | FieldError
+    | Merge<FieldError, FieldErrorsImpl<Record<string, unknown>>>; // Error from form validation
   showError: boolean; // Whether to display error messages
 }
 
@@ -66,7 +71,7 @@ export interface AuthFormValues {
   password: string;
   name?: string;
   rememberMe: boolean;
-  [key: string]: any; // To support dynamic fields
+  [key: string]: unknown; // To support dynamic fields
 }
 
 // TypeScript interface for the form values
@@ -146,15 +151,56 @@ export interface SectionHeaderProps {
 }
 
 export interface ApplicationFormProps {
-  jobId: string | number;
+  jobId: number;
   jobTitle: string;
   onSuccess: () => void;
   onCancel: () => void;
 }
+export interface ApplicationFormValues {
+  coverLetter: string;
+  resume?: UploadFile[]; // For Ant Design Upload component
+}
 
 export interface JobFormProps {
   jobId?: number;
-  initialValues?: any;
+  initialValues?: Partial<Job>; // Change from any to Partial<Job>
   onSuccess: () => void;
   onCancel: () => void;
+}
+export interface JobFormValues {
+  title: string;
+  description: string;
+  requirements: string;
+  responsibilities: string;
+  department: string;
+  location: string;
+  status: string;
+  salary?: string;
+  deadline?: Dayjs; // For the form values (before conversion)
+  posted_by?: string;
+  id?: number; // For edit mode
+}
+
+/**
+ * Custom error type for API errors
+ */
+export interface ApiError {
+  message: string;
+  status?: number;
+  details?: unknown;
+}
+
+/**
+ * Type for error handler argument
+ */
+export type ErrorWithMessage = Error | { message: string } | string | unknown;
+
+/**
+ * department interface
+ */ export interface Department {
+  id: string;
+  name: string;
+  description?: string;
+  created_at?: string;
+  updated_at?: string;
 }

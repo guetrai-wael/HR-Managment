@@ -3,7 +3,8 @@ import { Form, Input, Upload, Button, message } from "antd";
 import { UploadOutlined } from "@ant-design/icons";
 import type { UploadFile } from "antd/es/upload/interface";
 import { useUser, useApplicationActions } from "../../hooks";
-import { ApplicationFormProps } from "../../types";
+import { ApplicationFormProps, ApplicationFormValues } from "../../types";
+import { handleError } from "../../utils/errorHandler";
 
 const { TextArea } = Input;
 
@@ -19,7 +20,7 @@ const ApplicationForm: React.FC<ApplicationFormProps> = ({
   const { handleSubmitApplication, loading: submitting } =
     useApplicationActions();
 
-  const handleSubmit = async (values: any) => {
+  const handleSubmit = async (values: ApplicationFormValues) => {
     if (!user) {
       message.error("You must be logged in to apply");
       return;
@@ -28,7 +29,7 @@ const ApplicationForm: React.FC<ApplicationFormProps> = ({
     try {
       // Prepare application data
       const applicationData = {
-        job_id: jobId,
+        job_id: typeof jobId === "string" ? parseInt(jobId, 10) : jobId,
         user_id: user.id,
         cover_letter: values.coverLetter || "",
       };
@@ -47,8 +48,8 @@ const ApplicationForm: React.FC<ApplicationFormProps> = ({
         setFileList([]);
         onSuccess();
       }
-    } catch (error: any) {
-      console.error("Error submitting application:", error);
+    } catch (error) {
+      handleError(error, { userMessage: "Failed to submit application" });
     }
   };
 
@@ -74,44 +75,54 @@ const ApplicationForm: React.FC<ApplicationFormProps> = ({
     <Form form={form} layout="vertical" onFinish={handleSubmit}>
       <h3 className="text-lg font-medium mb-4">Apply for: {jobTitle}</h3>
 
-      <Form.Item
-        name="coverLetter"
-        label="Cover Letter"
-        rules={[{ required: true, message: "Please write a cover letter" }]}
-      >
-        <TextArea
-          rows={6}
-          placeholder="Explain why you're interested in this position and how your experience makes you a good fit..."
-        />
-      </Form.Item>
-
-      <Form.Item
-        name="resume"
-        label="Resume/CV"
-        rules={[{ required: true, message: "Please upload your resume" }]}
-      >
-        <Upload
-          beforeUpload={beforeUpload}
-          maxCount={1}
-          fileList={fileList}
-          onChange={({ fileList }) => setFileList(fileList)}
+      {/* Update to the following */}
+      <div className="space-y-6">
+        <Form.Item
+          name="coverLetter"
+          label="Cover Letter"
+          rules={[{ required: true, message: "Please write a cover letter" }]}
         >
-          <Button icon={<UploadOutlined />}>Select File (PDF or DOCX)</Button>
-        </Upload>
-      </Form.Item>
+          <TextArea
+            rows={6}
+            className="resize-y min-h-[100px]"
+            placeholder="Explain why you're interested in this position and how your experience makes you a good fit..."
+          />
+        </Form.Item>
 
-      <div className="form-actions-container flex-col-reverse sm:flex-row sm:justify-end">
-        <Button onClick={onCancel} className="!w-full sm:!w-auto">
-          Cancel
-        </Button>
-        <Button
-          type="primary"
-          htmlType="submit"
-          loading={submitting}
-          className="!w-full sm:!w-auto"
+        <Form.Item
+          name="resume"
+          label="Resume/CV"
+          rules={[{ required: true, message: "Please upload your resume" }]}
         >
-          Submit Application
-        </Button>
+          <Upload
+            beforeUpload={beforeUpload}
+            maxCount={1}
+            fileList={fileList}
+            onChange={({ fileList }) => setFileList(fileList)}
+            className="upload-list-inline w-full"
+          >
+            <Button
+              icon={<UploadOutlined />}
+              className="w-full sm:w-auto flex items-center justify-center"
+            >
+              <span>Select Resume (PDF/DOCX)</span>
+            </Button>
+          </Upload>
+        </Form.Item>
+
+        <div className="form-actions-container flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <Button onClick={onCancel} className="!w-full sm:!w-auto">
+            Cancel
+          </Button>
+          <Button
+            type="primary"
+            htmlType="submit"
+            loading={submitting}
+            className="!w-full sm:!w-auto"
+          >
+            Submit Application
+          </Button>
+        </div>
       </div>
     </Form>
   );

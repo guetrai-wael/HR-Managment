@@ -6,6 +6,7 @@ import { Job } from "../../types";
  */
 export const fetchJobs = async (department?: string): Promise<Job[]> => {
   try {
+    console.log("Fetching jobs with department filter:", department);
     let query = supabase
       .from("jobs")
       .select("*")
@@ -17,7 +18,12 @@ export const fetchJobs = async (department?: string): Promise<Job[]> => {
 
     const { data, error } = await query;
 
-    if (error) throw error;
+    if (error) {
+      console.error("Supabase error fetching jobs:", error);
+      throw error;
+    }
+
+    console.log("Jobs fetched successfully:", data?.length || 0, "results");
 
     return data || [];
   } catch (error) {

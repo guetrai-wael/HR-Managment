@@ -1,5 +1,4 @@
 import React from "react";
-import { useRole } from "../../hooks";
 import { Divider, Button, Tooltip } from "antd";
 import {
   FireFilled,
@@ -30,7 +29,6 @@ const JobCard: React.FC<JobCardProps> = ({
   showEditButton,
   showDeleteButton,
 }) => {
-  const { isAdmin } = useRole();
   // Icon mapping
   const iconMap = {
     hot: <FireFilled style={{ color: "#6068CA" }} />,
@@ -90,18 +88,18 @@ const JobCard: React.FC<JobCardProps> = ({
       {/* Card Content */}
       <div className="flex flex-col p-4 pb-0 gap-3 flex-grow">
         {/* Header with icon and title */}
-        <div className="job-card-header">
-          <div className="flex items-center gap-3 min-w-0 max-w-[80%]">
-            <div className="w-11 h-11 rounded-lg flex-shrink-0 flex items-center justify-center bg-gradient-to-r from-[#29359B] to-[#6068CA]">
+        <div className="job-card-header flex justify-between items-center w-full">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 pr-2">
+            <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-lg flex-shrink-0 flex items-center justify-center bg-gradient-to-r from-[#29359B] to-[#6068CA]">
               {iconMap[icon]}
             </div>
-            <h3 className="job-card-title text-base font-medium text-gray-900">
+            <h3 className="job-card-title text-base font-medium text-gray-900 truncate">
               {title}
             </h3>
           </div>
 
           {/* Action icons with guaranteed space */}
-          <div className="job-card-actions">
+          <div className="job-card-actions flex-shrink-0 ml-2">
             {showEditButton && (
               <Tooltip title="Edit job">
                 <Button

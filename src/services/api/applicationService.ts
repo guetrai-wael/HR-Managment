@@ -1,20 +1,23 @@
 import supabase from "../supabaseClient";
 import { Application } from "../../types";
+import { handleError } from "../../utils/errorHandler";
 
-/**
- * Fetch applications with optional filtering
- * Can filter by user ID, job ID, or status
- */
+// Update the fetchApplications function:
 export const fetchApplications = async (filters?: {
   userId?: string;
   jobId?: number;
+  departmentId?: string;
   status?: string;
+  dateRange?: [string, string];
+  search?: string;
 }): Promise<Application[]> => {
   try {
-    let query = supabase
-      .from("applications")
-      .select("*, job:jobs(*), profiles:profiles(full_name, email)")
-      .order("applied_at", { ascending: false });
+    // Create a query with proper joins
+    let query = supabase.from("applications").select(`
+        *,
+        job:jobs(*), 
+        profile:profiles(*)
+      `);
 
     // Apply filters if provided
     if (filters?.userId) {
@@ -29,98 +32,108 @@ export const fetchApplications = async (filters?: {
       query = query.eq("status", filters.status);
     }
 
-    const { data, error } = await query;
+    if (filters?.departmentId) {
+      // First, get jobs that belong to this department
+      const { data: jobsInDepartment } = await supabase
+        .from("jobs")
+        .select("id")
+        .eq("department_id", filters.departmentId);
+
+      if (jobsInDepartment && jobsInDepartment.length > 0) {
+        // Get the job IDs in this department
+        const jobIds = jobsInDepartment.map((job) => job.id);
+        // Filter applications by those job IDs
+        query = query.in("job_id", jobIds);
+      } else {
+        // If no jobs found in this department, return empty result
+        return [];
+      }
+    }
+
+    if (filters?.search) {
+      // Don't use OR operator directly, use filter() instead
+      const searchTerm = `%${filters.search}%`;
+
+      // Get profiles that match the search term first
+      const { data: matchingProfiles } = await supabase
+        .from("profiles")
+        .select("id")
+        .or(`full_name.ilike.${searchTerm},email.ilike.${searchTerm}`);
+
+      if (matchingProfiles && matchingProfiles.length > 0) {
+        // Get the profile IDs that matched
+        const profileIds = matchingProfiles.map((p) => p.id);
+        // Filter applications by those profile IDs
+        query = query.in("user_id", profileIds);
+      } else {
+        // No matching profiles, return empty result
+        return [];
+      }
+    }
+
+    if (filters?.dateRange && filters.dateRange[0] && filters.dateRange[1]) {
+      query = query
+        .gte("applied_at", filters.dateRange[0])
+        .lte("applied_at", filters.dateRange[1]);
+    }
+
+    const { data, error } = await query.order("applied_at", {
+      ascending: false,
+    });
 
     if (error) throw error;
 
     return data || [];
   } catch (error) {
-    console.error("Error fetching applications:", error);
-    throw error;
+    handleError(error, { userMessage: "Failed to fetch applications" });
+    return [];
   }
 };
-
 /**
- * Get a specific application by ID
+ * Update an application status
  */
-export const getApplicationById = async (id: number): Promise<Application> => {
-  try {
-    const { data, error } = await supabase
-      .from("applications")
-      .select("*, job:jobs(*), profiles:profiles(full_name, email)")
-      .eq("id", id)
-      .single();
 
-    if (error) throw error;
-    if (!data) throw new Error("Application not found");
-
-    return data;
-  } catch (error) {
-    console.error("Error fetching application details:", error);
-    throw error;
-  }
-};
-
-/**
- * Submit a new job application
- */
-export const submitApplication = async (
-  applicationData: Partial<Application>
-): Promise<Application> => {
-  try {
-    // Check if user has already applied to this job
-    if (applicationData.user_id && applicationData.job_id) {
-      const { data: existingApp, error: checkError } = await supabase
-        .from("applications")
-        .select()
-        .eq("job_id", applicationData.job_id)
-        .eq("user_id", applicationData.user_id)
-        .maybeSingle();
-
-      if (checkError) throw checkError;
-
-      if (existingApp) {
-        throw new Error("You have already applied for this job");
-      }
-    }
-
-    const { data, error } = await supabase
-      .from("applications")
-      .insert(applicationData)
-      .select();
-
-    if (error) throw error;
-    if (!data || data.length === 0)
-      throw new Error("Failed to submit application");
-
-    return data[0];
-  } catch (error) {
-    console.error("Error submitting application:", error);
-    throw error;
-  }
-};
-
-/**
- * Update an application's status
- */
 export const updateApplicationStatus = async (
   id: number,
-  status: "pending" | "accepted" | "rejected" | "interviewing"
+  status: string
 ): Promise<Application> => {
   try {
     const { data, error } = await supabase
       .from("applications")
       .update({ status })
       .eq("id", id)
-      .select();
+      .select()
+      .single();
 
     if (error) throw error;
-    if (!data || data.length === 0)
-      throw new Error("Failed to update application");
-
-    return data[0];
+    return data;
   } catch (error) {
-    console.error("Error updating application status:", error);
+    handleError(error, {
+      userMessage: `Failed to update application status to ${status}`,
+    });
+    throw error;
+  }
+};
+
+/**
+ * Submit a new application
+ */
+export const submitApplication = async (
+  applicationData: Partial<Application>
+): Promise<Application> => {
+  try {
+    const { data, error } = await supabase
+      .from("applications")
+      .insert([applicationData])
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    handleError(error, {
+      userMessage: "Error submitting application",
+    });
     throw error;
   }
 };
@@ -140,30 +153,27 @@ export const deleteApplication = async (id: number): Promise<void> => {
 };
 
 /**
- * Upload a resume file and return the URL
+ * Upload resume file and get URL
  */
 export const uploadResume = async (
   userId: string,
   file: File
 ): Promise<string> => {
   try {
-    // Create a folder with user ID to organize files
-    const filePath = `${userId}/${Date.now()}-${file.name}`;
+    const fileExt = file.name.split(".").pop();
+    const fileName = `${userId}_${Date.now()}.${fileExt}`;
+    const filePath = `resumes/${fileName}`;
 
     const { error: uploadError } = await supabase.storage
-      .from("resumes")
+      .from("applications")
       .upload(filePath, file);
 
     if (uploadError) throw uploadError;
 
-    // Get the public URL
-    const { data: urlData } = await supabase.storage
-      .from("resumes")
+    const { data } = supabase.storage
+      .from("applications")
       .getPublicUrl(filePath);
-
-    if (!urlData?.publicUrl) throw new Error("Failed to get resume URL");
-
-    return urlData.publicUrl;
+    return data.publicUrl;
   } catch (error) {
     console.error("Error uploading resume:", error);
     throw error;

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { message } from "antd";
 import { Job } from "../types";
 import { createJob, updateJob, deleteJob } from "../services/api/jobService";
+import { handleError } from "../utils/errorHandler";
 
 /**
  * Hook for job CRUD operations with loading state and error handling
@@ -17,10 +18,8 @@ export const useJobActions = () => {
       const newJob = await createJob(jobData);
       message.success("Job posted successfully!");
       return newJob;
-    } catch (error: any) {
-      message.error(
-        `Failed to create job: ${error.message || "Unknown error"}`
-      );
+    } catch (error) {
+      handleError(error, { userMessage: "Failed to create job" });
       return null;
     } finally {
       setLoading(false);
@@ -36,10 +35,8 @@ export const useJobActions = () => {
       const updatedJob = await updateJob(id, jobData);
       message.success("Job updated successfully!");
       return updatedJob;
-    } catch (error: any) {
-      message.error(
-        `Failed to update job: ${error.message || "Unknown error"}`
-      );
+    } catch (error) {
+      handleError(error, { userMessage: "Failed to update job" });
       return null;
     } finally {
       setLoading(false);
@@ -52,10 +49,8 @@ export const useJobActions = () => {
       await deleteJob(id);
       message.success("Job deleted successfully");
       return true;
-    } catch (error: any) {
-      message.error(
-        `Failed to delete job: ${error.message || "Unknown error"}`
-      );
+    } catch (error) {
+      handleError(error, { userMessage: "Failed to delete job" });
       return false;
     } finally {
       setLoading(false);

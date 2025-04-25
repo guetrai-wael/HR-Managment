@@ -43,23 +43,63 @@ export const useAuth = () => {
    */
   const register = async (email: string, password: string) => {
     setLoading(true);
+    try {
+      // Step 1: Create the auth user
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+      });
 
-    const { data: session, error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
+      if (error) throw error;
 
-    setLoading(false);
+      // Step 2: Create profile as a fallback
+      if (data?.user) {
+        // Create profile
+        await supabase
+          .from("profiles")
+          .insert([
+            {
+              id: data.user.id,
+              email: data.user.email,
+              full_name: data.user.email?.split("@")[0] || "User",
+            },
+          ])
+          .then(({ error }) => {
+            if (error && !error.message.includes("duplicate")) {
+              console.error("Profile creation failed:", error);
+            }
+          });
 
-    if (error) {
+        // Assign employee role
+        const { count } = await supabase
+          .from("user_roles")
+          .select("*", { count: "exact", head: true });
+
+        const roleId = count === 0 ? 1 : 2; // 1=admin for first user, 2=employee for others
+
+        await supabase
+          .from("user_roles")
+          .insert([
+            {
+              user_id: data.user.id,
+              role_id: roleId,
+            },
+          ])
+          .then(({ error }) => {
+            if (error) {
+              console.error("Role assignment failed:", error);
+            }
+          });
+      }
+
+      setLoading(false);
+      message.success("Registration successful!");
+      return data;
+    } catch (error) {
+      setLoading(false);
       message.error(error.message);
-      return null;
+      throw error;
     }
-
-    message.success(
-      "Registration successful! Please check your email to confirm your account."
-    );
-    return session;
   };
 
   /**

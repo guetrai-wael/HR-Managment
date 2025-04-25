@@ -16,6 +16,7 @@ export interface Job {
   location: string;
   salary: string | null;
   department: string;
+  department_id?: number;
   posted_at: string;
   posted_by: string;
 }
@@ -32,10 +33,7 @@ export interface Application {
   status: "pending" | "accepted" | "rejected" | "interviewing";
   applied_at: string;
   job?: Job;
-  profiles?: {
-    full_name: string;
-    email: string;
-  };
+  profile?: UserProfile;
 }
 
 /**

@@ -2,7 +2,8 @@ import React, { useState, useEffect } from "react";
 import { Form, Input, Select, DatePicker, Button } from "antd";
 import { useUser, useJobActions } from "../../hooks";
 import dayjs from "dayjs";
-import { Job, JobFormProps } from "../../types";
+import { Job, JobFormProps, JobFormValues } from "../../types";
+import { handleError } from "../../utils/errorHandler";
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -39,14 +40,21 @@ const JobForm: React.FC<JobFormProps> = ({
     if (isEditMode && initialValues) {
       form.setFieldsValue({
         ...initialValues,
-        deadline: initialValues.deadline ? dayjs(initialValues.deadline) : null,
+        deadline: initialValues.deadline
+          ? dayjs(initialValues.deadline)
+          : undefined,
       });
+    } else if (!isEditMode) {
+      form.resetFields();
     }
   }, [form, initialValues, isEditMode]);
+  const handleCancel = () => {
+    form.resetFields();
+    onCancel();
+  };
 
-  const handleSubmit = async (values: any) => {
+  const handleSubmit = async (values: JobFormValues) => {
     try {
-      // Ensure all required fields are present
       const jobData: Partial<Job> = {
         title: values.title || "Untitled Job",
         description: values.description || "No description provided",
@@ -56,10 +64,8 @@ const JobForm: React.FC<JobFormProps> = ({
         department: values.department || "General",
         location: values.location || "Remote",
         status: values.status || "Open",
-        salary: values.salary || null, // Optional field
-        deadline: values.deadline
-          ? new Date(values.deadline).toISOString().split("T")[0]
-          : null,
+        salary: values.salary || null,
+        deadline: values.deadline ? values.deadline.format("YYYY-MM-DD") : null,
       };
 
       // Add posted_by only for new jobs
@@ -82,8 +88,8 @@ const JobForm: React.FC<JobFormProps> = ({
         form.resetFields();
         onSuccess();
       }
-    } catch (error: any) {
-      console.error("Failed to save job:", error);
+    } catch (error) {
+      handleError(error, { userMessage: "Failed to save job" });
     }
   };
 
@@ -96,67 +102,78 @@ const JobForm: React.FC<JobFormProps> = ({
         status: "New",
         department: "Engineering",
       }}
+      className="job-form-container max-w-full"
     >
-      <Form.Item
-        name="title"
-        label="Job Title"
-        rules={[{ required: true, message: "Please enter the job title" }]}
-      >
-        <Input placeholder="e.g., Senior Frontend Developer" />
-      </Form.Item>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6">
+        {/* Left column */}
+        <div>
+          <Form.Item
+            name="title"
+            label="Job Title"
+            rules={[{ required: true, message: "Please enter the job title" }]}
+          >
+            <Input placeholder="e.g., Senior Frontend Developer" />
+          </Form.Item>
 
-      <Form.Item
-        name="department"
-        label="Department"
-        rules={[{ required: true, message: "Please select a department" }]}
-      >
-        <Select>
-          {departments.map((dept) => (
-            <Option key={dept} value={dept}>
-              {dept}
-            </Option>
-          ))}
-        </Select>
-      </Form.Item>
+          <Form.Item
+            name="department"
+            label="Department"
+            rules={[{ required: true, message: "Please select a department" }]}
+          >
+            <Select>
+              {departments.map((dept) => (
+                <Option key={dept} value={dept}>
+                  {dept}
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
 
-      <Form.Item
-        name="location"
-        label="Location"
-        rules={[{ required: true, message: "Please enter the job location" }]}
-      >
-        <Input placeholder="e.g., Remote, New York, Hybrid" />
-      </Form.Item>
+          <Form.Item
+            name="location"
+            label="Location"
+            rules={[
+              { required: true, message: "Please enter the job location" },
+            ]}
+          >
+            <Input placeholder="e.g., Remote, New York, Hybrid" />
+          </Form.Item>
+        </div>
 
-      <Form.Item
-        name="salary"
-        label="Salary Range"
-        rules={[{ required: true, message: "Please enter the salary range" }]}
-      >
-        <Input placeholder="e.g., $80,000 - $100,000" />
-      </Form.Item>
+        {/* Right column */}
+        <div>
+          <Form.Item
+            name="salary"
+            label="Salary Range"
+            rules={[
+              { required: true, message: "Please enter the salary range" },
+            ]}
+          >
+            <Input placeholder="e.g., $80,000 - $100,000" />
+          </Form.Item>
 
-      <Form.Item
-        name="status"
-        label="Status"
-        rules={[{ required: true, message: "Please select a status" }]}
-      >
-        <Select>
-          <Option value="New">New</Option>
-          <Option value="Open">Open</Option>
-          <Option value="Featured">Featured</Option>
-          <Option value="Closed">Closed</Option>
-        </Select>
-      </Form.Item>
+          <Form.Item
+            name="status"
+            label="Status"
+            rules={[{ required: true, message: "Please select a status" }]}
+          >
+            <Select>
+              <Option value="Open">Open</Option>
+              <Option value="Closed">Closed</Option>
+            </Select>
+          </Form.Item>
 
-      <Form.Item
-        name="deadline"
-        label="Application Deadline"
-        rules={[
-          { required: true, message: "Please set an application deadline" },
-        ]}
-      >
-        <DatePicker className="w-full" />
-      </Form.Item>
+          <Form.Item
+            name="deadline"
+            label="Application Deadline"
+            rules={[
+              { required: true, message: "Please set an application deadline" },
+            ]}
+          >
+            <DatePicker className="w-full" />
+          </Form.Item>
+        </div>
+      </div>
 
       <Form.Item
         name="description"
@@ -197,7 +214,7 @@ const JobForm: React.FC<JobFormProps> = ({
       </Form.Item>
 
       <div className="form-actions-container flex-col-reverse sm:flex-row sm:justify-end">
-        <Button onClick={onCancel} className="!w-full sm:!w-auto">
+        <Button onClick={handleCancel} className="!w-full sm:!w-auto">
           Cancel
         </Button>
         <Button

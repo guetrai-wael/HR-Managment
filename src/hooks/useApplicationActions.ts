@@ -6,13 +6,62 @@ import {
   updateApplicationStatus,
   deleteApplication,
   uploadResume,
+  fetchApplications,
 } from "../services/api/applicationService";
+import { handleError } from "../utils/errorHandler";
 
 /**
  * Hook for application-related operations with loading state and error handling
  */
-export const useApplicationActions = () => {
+export const useApplicationActions = (): {
+  loading: boolean;
+  submitting: boolean;
+  getApplications: (filters?: {
+    userId?: string;
+    jobId?: number;
+    departmentId?: string;
+    status?: string;
+    dateRange?: [string, string];
+    search?: string;
+  }) => Promise<Application[]>;
+  handleSubmitApplication: (
+    applicationData: Partial<Application>,
+    file?: File
+  ) => Promise<Application | null>;
+  handleUpdateStatus: (
+    id: number,
+    status: "pending" | "accepted" | "rejected" | "interviewing"
+  ) => Promise<Application | null>;
+  handleDeleteApplication: (id: number) => Promise<boolean>;
+} => {
   const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  /**
+   * Fetch applications with filters
+   */
+  const getApplications = async (filters?: {
+    userId?: string;
+    jobId?: number;
+    departmentId?: string;
+    status?: string;
+    dateRange?: [string, string];
+    search?: string;
+  }): Promise<Application[]> => {
+    setLoading(true);
+    try {
+      const applications = await fetchApplications(filters);
+      return applications;
+    } catch (error: unknown) {
+      // Replace any with unknown
+      handleError(error, {
+        userMessage: "Failed to fetch applications",
+      });
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  };
 
   /**
    * Submit a new job application
@@ -21,7 +70,7 @@ export const useApplicationActions = () => {
     applicationData: Partial<Application>,
     file?: File
   ): Promise<Application | null> => {
-    setLoading(true);
+    setSubmitting(true);
     try {
       let resumeUrl = applicationData.resume_url;
 
@@ -41,13 +90,13 @@ export const useApplicationActions = () => {
       const newApplication = await submitApplication(dataWithResume);
       message.success("Application submitted successfully!");
       return newApplication;
-    } catch (error: any) {
-      message.error(
-        `Failed to submit application: ${error.message || "Unknown error"}`
-      );
+    } catch (error: unknown) {
+      handleError(error, {
+        userMessage: "Failed to submit application",
+      });
       return null;
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -63,10 +112,10 @@ export const useApplicationActions = () => {
       const updatedApplication = await updateApplicationStatus(id, status);
       message.success(`Application status updated to ${status}`);
       return updatedApplication;
-    } catch (error: any) {
-      message.error(
-        `Failed to update status: ${error.message || "Unknown error"}`
-      );
+    } catch (error: unknown) {
+      handleError(error, {
+        userMessage: `Failed to update status`,
+      });
       return null;
     } finally {
       setLoading(false);
@@ -82,10 +131,10 @@ export const useApplicationActions = () => {
       await deleteApplication(id);
       message.success("Application deleted successfully");
       return true;
-    } catch (error: any) {
-      message.error(
-        `Failed to delete application: ${error.message || "Unknown error"}`
-      );
+    } catch (error: unknown) {
+      handleError(error, {
+        userMessage: "Failed to delete application",
+      });
       return false;
     } finally {
       setLoading(false);
@@ -94,6 +143,8 @@ export const useApplicationActions = () => {
 
   return {
     loading,
+    submitting,
+    getApplications,
     handleSubmitApplication,
     handleUpdateStatus,
     handleDeleteApplication,

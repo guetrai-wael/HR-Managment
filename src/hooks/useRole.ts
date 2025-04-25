@@ -3,11 +3,10 @@ import { useUser } from "./";
 import supabase from "../services/supabaseClient";
 
 export const useRole = () => {
-  const { user } = useUser();
+  const { user, session, loading: userLoading } = useUser();
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
-  const [isEmployee, setIsEmployee] = useState<boolean>(false);
-  const [loading, setLoading] = useState<boolean>(true);
-
+  const [isEmployee, setIsEmployee] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(false);
   useEffect(() => {
     const checkUserRole = async () => {
       if (!user) {
@@ -18,27 +17,23 @@ export const useRole = () => {
       }
 
       try {
-        const { data: adminData, error: adminError } = await supabase.rpc(
-          "has_role",
-          {
-            user_uuid: user.id,
-            role_name: "admin",
-          }
-        );
+        console.log("Checking role for user:", user.id);
+        const { data, error } = await supabase
+          .from("user_roles")
+          .select("role_id")
+          .eq("user_id", user.id)
+          .single();
 
-        if (adminError) throw adminError;
-        const { data: employeeData, error: employeeError } = await supabase.rpc(
-          "has_role",
-          {
-            user_uuid: user.id,
-            role_name: "employee",
-          }
-        );
+        if (error) throw error;
 
-        if (employeeError) throw employeeError;
+        // Role ID 1 is admin
+        setIsAdmin(data?.role_id === 1);
+        setIsEmployee(data?.role_id === 2 || !data);
 
-        setIsAdmin(adminData || false);
-        setIsEmployee(employeeData || false);
+        console.log("User role checked:", {
+          isAdmin: data?.role_id === 1,
+          isEmployee: data?.role_id === 2,
+        });
       } catch (error) {
         console.error("Error checking user role:", error);
         // Default to employee if there's an error
@@ -50,9 +45,9 @@ export const useRole = () => {
     };
 
     checkUserRole();
-  }, [user]);
+  }, [user, session]);
 
-  return { isAdmin, isEmployee, loading };
+  return { isAdmin, isEmployee, loading: loading || userLoading };
 };
 
 export default useRole;

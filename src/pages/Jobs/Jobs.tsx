@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { PlusOutlined } from "@ant-design/icons";
 import { Modal, message, Spin } from "antd";
-import { Header, SectionHeader, JobCard } from "../../components/common/index";
+import { Header, SectionHeader } from "../../components/common/index";
+import { JobCard } from "../../components/Jobs/index";
 import { JobForm } from "../../components/Jobs/index";
 import { useRole, useJobActions } from "../../hooks";
 import { fetchJobs } from "../../services/api/jobService";
@@ -20,26 +21,56 @@ const Jobs = () => {
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [activeTab, setActiveTab] = useState("all");
 
+  // Add a fetchId ref to prevent race conditions
+  const fetchId = useRef(0);
+
   // Use the new service function instead of direct Supabase call
   const loadJobs = async () => {
+    const currentFetch = ++fetchId.current;
     setLoading(true);
+
     try {
-      // Replace the direct Supabase call with our service function
-      const data = await fetchJobs(activeTab !== "all" ? activeTab : undefined);
-      setJobs(data);
+      // Add timeout protection
+      const data = await Promise.race([
+        fetchJobs(activeTab !== "all" ? activeTab : undefined),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("Request timed out")), 10000)
+        ),
+      ]);
+
+      // Only update state if this is still the most recent fetch
+      if (fetchId.current === currentFetch) {
+        console.log("Jobs loaded:", data?.length || 0);
+        setJobs(data || []);
+      }
     } catch (error) {
-      console.error("Error fetching jobs:", error);
-      message.error("Failed to load jobs");
+      // Only update state if this is still the most recent fetch
+      if (fetchId.current === currentFetch) {
+        console.error("Error fetching jobs:", error);
+        message.error("Failed to load jobs");
+        setJobs([]);
+      }
     } finally {
-      setLoading(false);
+      // Only clear loading if this is still the most recent fetch
+      if (fetchId.current === currentFetch) {
+        setLoading(false);
+      }
     }
   };
 
   // Fetch jobs on initial load and when activeTab changes
   useEffect(() => {
     loadJobs();
+    // Cleanup function to handle unmounting
+    return () => {
+      // This prevents state updates after unmount by marking the current fetch as stale
+      fetchId.current = -1;
+    };
   }, [activeTab]);
 
+  // Rest of your component remains the same...
+
+  // Existing handlers
   const handleViewJob = (id: number) => {
     navigate(`/jobs/${id}`);
   };
@@ -54,11 +85,10 @@ const Jobs = () => {
     setJobFormVisible(true);
   };
 
-  // Use the service function instead of direct Supabase call
   const onDeleteJob = async (id: number) => {
     const success = await handleDeleteJob(id);
     if (success) {
-      loadJobs(); // Refresh the job list
+      loadJobs();
     }
   };
 

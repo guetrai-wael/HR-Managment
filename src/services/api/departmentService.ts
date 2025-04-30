@@ -1,17 +1,15 @@
 import supabase from "../supabaseClient";
-import { Department } from "../../types";
+import { Department } from "../../types/models";
 import { handleError } from "../../utils/errorHandler";
-
 /**
- * Fetch all departments from the database
+ * Fetch all departments
  */
 export const fetchDepartments = async (): Promise<Department[]> => {
   try {
     const { data, error } = await supabase
       .from("departments")
       .select("*")
-      .order("name");
-
+      .order("name", { ascending: true });
     if (error) throw error;
     return data || [];
   } catch (error) {
@@ -19,83 +17,33 @@ export const fetchDepartments = async (): Promise<Department[]> => {
     return [];
   }
 };
-
 /**
- * Fetch a department by ID
+ * Get a specific department by ID
  */
 export const getDepartmentById = async (
   id: string
 ): Promise<Department | null> => {
+  if (!id) {
+    console.warn("getDepartmentById called without an ID.");
+    return null;
+  }
   try {
     const { data, error } = await supabase
       .from("departments")
       .select("*")
       .eq("id", id)
       .single();
-
-    if (error) throw error;
+    if (error) {
+      if (error.code === "PGRST116" && !data) {
+        console.warn(`Department not found for ID: ${id}`);
+        return null;
+      }
+      throw error;
+    }
     return data;
   } catch (error) {
-    handleError(error, { userMessage: "Failed to fetch department" });
+    handleError(error, { userMessage: "Failed to fetch department details" });
     return null;
   }
 };
-
-/**
- * Create a new department
- */
-export const createDepartment = async (
-  departmentData: Partial<Department>
-): Promise<Department | null> => {
-  try {
-    const { data, error } = await supabase
-      .from("departments")
-      .insert([departmentData])
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
-  } catch (error) {
-    handleError(error, { userMessage: "Failed to create department" });
-    return null;
-  }
-};
-
-/**
- * Update an existing department
- */
-export const updateDepartment = async (
-  id: string,
-  departmentData: Partial<Department>
-): Promise<Department | null> => {
-  try {
-    const { data, error } = await supabase
-      .from("departments")
-      .update(departmentData)
-      .eq("id", id)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
-  } catch (error) {
-    handleError(error, { userMessage: "Failed to update department" });
-    return null;
-  }
-};
-
-/**
- * Delete a department
- */
-export const deleteDepartment = async (id: string): Promise<boolean> => {
-  try {
-    const { error } = await supabase.from("departments").delete().eq("id", id);
-
-    if (error) throw error;
-    return true;
-  } catch (error) {
-    handleError(error, { userMessage: "Failed to delete department" });
-    return false;
-  }
-};
+// createDepartment, updateDepartment, deleteDepartment are not needed for now.

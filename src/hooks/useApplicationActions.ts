@@ -1,140 +1,140 @@
 import { useState } from "react";
 import { message } from "antd";
-import { Application } from "../types";
+import supabase from "../services/supabaseClient"; // Import supabase client for storage
+// Correct the import name here
 import {
-  submitApplication,
   updateApplicationStatus,
   deleteApplication,
-  uploadResume,
-  fetchApplications,
+  createApplication, // Changed from submitApplication
 } from "../services/api/applicationService";
+import { Application } from "../types";
 import { handleError } from "../utils/errorHandler";
+import { useUser } from "./useUser"; // Assuming useUser is used
 
-/**
- * Hook for application-related operations with loading state and error handling
- */
-export const useApplicationActions = (): {
-  loading: boolean;
-  submitting: boolean;
-  getApplications: (filters?: {
-    userId?: string;
-    jobId?: number;
-    departmentId?: string;
-    status?: string;
-    dateRange?: [string, string];
-    search?: string;
-  }) => Promise<Application[]>;
-  handleSubmitApplication: (
-    applicationData: Partial<Application>,
-    file?: File
-  ) => Promise<Application | null>;
-  handleUpdateStatus: (
-    id: number,
-    status: "pending" | "accepted" | "rejected" | "interviewing"
-  ) => Promise<Application | null>;
-  handleDeleteApplication: (id: number) => Promise<boolean>;
-} => {
+export const useApplicationActions = () => {
   const [loading, setLoading] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+  const { user } = useUser(); // Get user for create action
 
-  /**
-   * Fetch applications with filters
-   */
-  const getApplications = async (filters?: {
-    userId?: string;
-    jobId?: number;
-    departmentId?: string;
-    status?: string;
-    dateRange?: [string, string];
-    search?: string;
-  }): Promise<Application[]> => {
-    setLoading(true);
-    try {
-      const applications = await fetchApplications(filters);
-      return applications;
-    } catch (error: unknown) {
-      // Replace any with unknown
-      handleError(error, {
-        userMessage: "Failed to fetch applications",
-      });
-      return [];
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  /**
-   * Submit a new job application
-   */
+  // Function to handle creating a new application (potentially with file upload)
   const handleSubmitApplication = async (
     applicationData: Partial<Application>,
-    file?: File
-  ): Promise<Application | null> => {
-    setSubmitting(true);
+    resumeFile?: File // Optional file parameter
+  ): Promise<boolean> => {
+    if (!user) {
+      handleError(new Error("User not logged in"), {
+        userMessage: "You must be logged in to apply.",
+      });
+      return false;
+    }
+
+    setLoading(true);
     try {
-      let resumeUrl = applicationData.resume_url;
+      let resumeUrl: string | null = null;
 
-      // Upload resume if file is provided
-      if (file && applicationData.user_id) {
-        resumeUrl = await uploadResume(applicationData.user_id, file);
+      // --- File Upload Logic ---
+      // Upload resume if provided
+      if (resumeFile) {
+        // Create a unique file path, e.g., using user ID and timestamp
+        const filePath = `${user.id}/${Date.now()}_${resumeFile.name}`;
+        console.log(`Uploading resume to: ${filePath}`); // Debug log
+
+        // Replace 'resumes' with your actual Supabase storage bucket name
+        const { error: uploadError } = await supabase.storage
+          .from("resumes") // <<<--- MAKE SURE 'resumes' IS YOUR BUCKET NAME
+          .upload(filePath, resumeFile);
+
+        if (uploadError) {
+          console.error("Supabase storage upload error:", uploadError);
+          throw new Error(`Failed to upload resume: ${uploadError.message}`);
+        }
+
+        // Get the public URL of the uploaded file
+        const { data: urlData } = supabase.storage
+          .from("resumes") // <<<--- MAKE SURE 'resumes' IS YOUR BUCKET NAME
+          .getPublicUrl(filePath);
+
+        resumeUrl = urlData?.publicUrl || null;
+        console.log(`Resume uploaded, URL: ${resumeUrl}`); // Debug log
+        if (!resumeUrl) {
+          console.warn("Could not get public URL for uploaded resume.");
+          // Decide if you want to proceed without a URL or throw an error
+        }
       }
+      // --- End File Upload Logic ---
 
-      // Add resume URL to application data
-      const dataWithResume = {
+      // Add user_id and resume_url before creating the application record
+      const finalData: Partial<Application> = {
         ...applicationData,
-        resume_url: resumeUrl,
-        status: applicationData.status || "pending",
-        applied_at: applicationData.applied_at || new Date().toISOString(),
+        user_id: user.id, // Ensure user_id is set from the logged-in user
+        resume_url: resumeUrl, // Set resume URL (will be null if no file was uploaded)
+        status: "pending", // Explicitly set initial status
+        applied_at: new Date().toISOString(), // Set application timestamp
       };
 
-      const newApplication = await submitApplication(dataWithResume);
-      message.success("Application submitted successfully!");
-      return newApplication;
-    } catch (error: unknown) {
+      console.log("Creating application record with data:", finalData); // Debug log
+
+      // Call the correctly imported function
+      const newApplication = await createApplication(finalData);
+
+      if (newApplication) {
+        message.success("Application submitted successfully!");
+        setLoading(false);
+        return true;
+      } else {
+        // Error should have been handled by createApplication's handleError
+        console.error("createApplication returned null or failed silently.");
+        setLoading(false);
+        return false;
+      }
+    } catch (error) {
+      // Catch errors from file upload or other unexpected issues in this function
+      console.error("Error in handleSubmitApplication:", error); // Detailed log
       handleError(error, {
-        userMessage: "Failed to submit application",
+        userMessage:
+          "An unexpected error occurred while submitting the application.",
       });
-      return null;
-    } finally {
-      setSubmitting(false);
+      setLoading(false);
+      return false;
     }
   };
 
-  /**
-   * Update an application's status
-   */
+  // Function to handle updating status
   const handleUpdateStatus = async (
     id: number,
-    status: "pending" | "accepted" | "rejected" | "interviewing"
-  ): Promise<Application | null> => {
+    status: string
+  ): Promise<boolean> => {
     setLoading(true);
     try {
-      const updatedApplication = await updateApplicationStatus(id, status);
-      message.success(`Application status updated to ${status}`);
-      return updatedApplication;
-    } catch (error: unknown) {
-      handleError(error, {
-        userMessage: `Failed to update status`,
-      });
-      return null;
+      const updated = await updateApplicationStatus(id, status);
+      if (updated) {
+        message.success(`Application status updated to ${status}`);
+        return true; // Indicate success
+      }
+      // If updated is null, error was handled in service
+      return false; // Indicate failure
+    } catch (error) {
+      // Catch unexpected errors in this function itself
+      handleError(error, { userMessage: "Failed to update status." });
+      return false;
     } finally {
       setLoading(false);
     }
   };
 
-  /**
-   * Delete an application
-   */
+  // Function to handle deleting an application
   const handleDeleteApplication = async (id: number): Promise<boolean> => {
     setLoading(true);
     try {
-      await deleteApplication(id);
-      message.success("Application deleted successfully");
-      return true;
-    } catch (error: unknown) {
-      handleError(error, {
-        userMessage: "Failed to delete application",
-      });
+      const deleted = await deleteApplication(id);
+      if (deleted) {
+        message.success("Application deleted successfully");
+        return true; // Indicate success
+      }
+      // If deleted is false, error was handled in service
+      return false; // Indicate failure
+    } catch (error) {
+      // Catch unexpected errors in this function itself
+      handleError(error, { userMessage: "Failed to delete application." });
       return false;
     } finally {
       setLoading(false);
@@ -143,9 +143,7 @@ export const useApplicationActions = (): {
 
   return {
     loading,
-    submitting,
-    getApplications,
-    handleSubmitApplication,
+    handleSubmitApplication, // Export the create handler
     handleUpdateStatus,
     handleDeleteApplication,
   };

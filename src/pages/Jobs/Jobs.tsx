@@ -1,76 +1,98 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { PlusOutlined } from "@ant-design/icons";
-import { Modal, message, Spin } from "antd";
+import { PlusOutlined, ExclamationCircleFilled } from "@ant-design/icons";
+import { Modal, message, Spin, Select, Button } from "antd";
 import { Header, SectionHeader } from "../../components/common/index";
 import { JobCard } from "../../components/Jobs/index";
 import { JobForm } from "../../components/Jobs/index";
 import { useRole, useJobActions } from "../../hooks";
 import { fetchJobs } from "../../services/api/jobService";
+import { fetchDepartments } from "../../services/api/departmentService";
 import { Job } from "../../types";
+import { Department } from "../../types/models";
+
+const { Option } = Select;
+const { confirm } = Modal;
 
 const Jobs = () => {
   const navigate = useNavigate();
   const { isAdmin } = useRole();
-  const { handleDeleteJob } = useJobActions();
+  const { handleDeleteJob, loading: deleteLoading } = useJobActions();
 
   // State variables
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingDepartments, setLoadingDepartments] = useState(true);
   const [jobFormVisible, setJobFormVisible] = useState(false);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
-  const [activeTab, setActiveTab] = useState("all");
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState<
+    number | "all"
+  >("all");
 
-  // Add a fetchId ref to prevent race conditions
   const fetchId = useRef(0);
 
-  // Use the new service function instead of direct Supabase call
-  const loadJobs = async () => {
+  // --- Fetch Departments ---
+  useEffect(() => {
+    const loadDepartments = async () => {
+      setLoadingDepartments(true);
+      try {
+        const fetchedDepartments = await fetchDepartments();
+        setDepartments(fetchedDepartments);
+      } catch (_error) {
+        message.error("Failed to load departments for filtering.");
+        setDepartments([]);
+      } finally {
+        setLoadingDepartments(false);
+      }
+    };
+    loadDepartments();
+  }, []);
+
+  // --- Memoize loadJobs ---
+  const loadJobs = useCallback(async () => {
     const currentFetch = ++fetchId.current;
     setLoading(true);
 
     try {
-      // Add timeout protection
+      const departmentIdToFilter =
+        selectedDepartmentId !== "all" ? selectedDepartmentId : undefined;
+
       const data = await Promise.race([
-        fetchJobs(activeTab !== "all" ? activeTab : undefined),
+        fetchJobs(departmentIdToFilter),
         new Promise<never>((_, reject) =>
           setTimeout(() => reject(new Error("Request timed out")), 10000)
         ),
       ]);
 
-      // Only update state if this is still the most recent fetch
       if (fetchId.current === currentFetch) {
         console.log("Jobs loaded:", data?.length || 0);
         setJobs(data || []);
       }
     } catch (error) {
-      // Only update state if this is still the most recent fetch
       if (fetchId.current === currentFetch) {
         console.error("Error fetching jobs:", error);
         message.error("Failed to load jobs");
         setJobs([]);
       }
     } finally {
-      // Only clear loading if this is still the most recent fetch
       if (fetchId.current === currentFetch) {
         setLoading(false);
       }
     }
-  };
+  }, [selectedDepartmentId]);
 
-  // Fetch jobs on initial load and when activeTab changes
+  // Fetch jobs on initial load and when dependencies change
   useEffect(() => {
-    loadJobs();
-    // Cleanup function to handle unmounting
+    if (!loadingDepartments) {
+      loadJobs();
+    }
     return () => {
-      // This prevents state updates after unmount by marking the current fetch as stale
       fetchId.current = -1;
     };
-  }, [activeTab]);
+  }, [loadJobs, loadingDepartments]);
 
-  // Rest of your component remains the same...
-
-  // Existing handlers
+  // --- Handlers ---
   const handleViewJob = (id: number) => {
     navigate(`/jobs/${id}`);
   };
@@ -85,22 +107,35 @@ const Jobs = () => {
     setJobFormVisible(true);
   };
 
-  const onDeleteJob = async (id: number) => {
-    const success = await handleDeleteJob(id);
-    if (success) {
-      loadJobs();
-    }
+  // --- onDeleteJob ---
+  const onDeleteJob = (id: number, title: string) => {
+    confirm({
+      title: `Are you sure you want to delete the job "${title}"?`,
+      icon: <ExclamationCircleFilled />,
+      content: "This action cannot be undone.",
+      okText: "Delete",
+      okType: "danger",
+      cancelText: "Cancel",
+      onOk: async () => {
+        try {
+          const success = await handleDeleteJob(id);
+          if (success && !loadingDepartments) {
+            loadJobs();
+          }
+        } catch (error) {
+          console.error("Error during delete confirmation:", error);
+          message.error("An unexpected error occurred during deletion.");
+        }
+      },
+      onCancel() {
+        console.log("Delete cancelled");
+      },
+    });
   };
 
-  // Define the department tabs for filtering
-  const departmentTabs = [
-    { key: "all", label: "All" },
-    { key: "Engineering", label: "Engineering" },
-    { key: "Marketing", label: "Marketing" },
-    { key: "Finance", label: "Finance" },
-    { key: "HR", label: "HR" },
-    { key: "Design", label: "Design" },
-  ];
+  const handleDepartmentChange = (value: number | "all") => {
+    setSelectedDepartmentId(value);
+  };
 
   return (
     <div className="flex flex-col h-full overflow-auto py-4">
@@ -108,32 +143,60 @@ const Jobs = () => {
         <Header title="Jobs" />
       </div>
 
-      <div className="px-4 md:px-8 space-y-10">
-        {/* Featured Jobs Section */}
+      <div className="px-4 md:px-8 space-y-6">
+        {/* --- Section Header --- */}
         <SectionHeader
           title="Available Jobs"
           subtitle="Apply to jobs that match your skills and experience"
-          tabs={departmentTabs}
-          defaultActiveTab="all"
-          onTabChange={setActiveTab}
-          actionButton={
-            isAdmin
-              ? {
-                  icon: <PlusOutlined />,
-                  label: "Add Job",
-                  onClick: handleAddJob,
-                }
-              : undefined
-          }
+          tabs={[]}
         />
 
-        {loading ? (
-          <div className="flex justify-center py-20">
+        {/* --- Filter and Action Row --- */}
+        <div className="flex justify-between items-center space-x-4">
+          <div className="flex items-center space-x-2">
+            <span className="font-semibold whitespace-nowrap">
+              Filter by Department:
+            </span>
+            <Select
+              value={selectedDepartmentId}
+              style={{ width: 200 }}
+              onChange={handleDepartmentChange}
+              loading={loadingDepartments}
+              disabled={loadingDepartments}
+              allowClear={false}
+            >
+              <Option key="all" value="all">
+                All Departments
+              </Option>
+              {departments.map((dept) => (
+                <Option key={dept.id} value={dept.id}>
+                  {dept.name}
+                </Option>
+              ))}
+            </Select>
+          </div>
+          {isAdmin && (
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={handleAddJob}
+            >
+              Add Job
+            </Button>
+          )}
+        </div>
+        {/* --- End Filter and Action Row --- */}
+
+        {/* Loading/Empty/Job List */}
+        {loading || loadingDepartments ? (
+          <div className="flex justify-center py-10">
             <Spin size="large" />
           </div>
         ) : jobs.length === 0 ? (
-          <div className="text-center py-20 text-gray-500">
-            No jobs available in this category
+          <div className="text-center py-10 text-gray-500">
+            {selectedDepartmentId === "all"
+              ? "No jobs available"
+              : "No jobs available in this department"}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
@@ -144,11 +207,11 @@ const Jobs = () => {
                 description={job.description}
                 status={job.status}
                 icon="featured"
-                deadline={job.deadline}
+                deadline={job.deadline ?? undefined}
                 onActionClick={() => handleViewJob(job.id)}
                 onApplyClick={() => handleViewJob(job.id)}
                 onEditClick={() => handleEditJob(job)}
-                onDeleteClick={() => onDeleteJob(job.id)}
+                onDeleteClick={() => onDeleteJob(job.id, job.title)}
                 showApplyButton={!isAdmin}
                 showEditButton={isAdmin}
                 showDeleteButton={isAdmin}
@@ -170,10 +233,12 @@ const Jobs = () => {
       >
         <JobForm
           jobId={selectedJob?.id}
-          initialValues={selectedJob}
+          initialValues={selectedJob ?? undefined}
           onSuccess={() => {
             setJobFormVisible(false);
-            loadJobs();
+            if (!loadingDepartments) {
+              loadJobs();
+            }
           }}
           onCancel={() => setJobFormVisible(false)}
         />

@@ -31,14 +31,6 @@ const ApplicationsTable: React.FC<ApplicationsTableProps> = ({
   onViewResume,
   onViewProfile,
 }) => {
-  // Add this debug log to help identify data structure issues
-  React.useEffect(() => {
-    if (applications.length > 0) {
-      console.log("Sample application:", applications[0]);
-      console.log("Job data structure:", applications[0].job);
-    }
-  }, [applications]);
-
   const columns = [
     // Applicant Information (with avatar)
     {
@@ -80,7 +72,7 @@ const ApplicationsTable: React.FC<ApplicationsTableProps> = ({
           </span>
           <span className="text-xs text-gray-500 flex items-center">
             <EnvironmentOutlined className="mr-1" />
-            {record.job?.department || ""}
+            {record.job?.department?.name || "No Department"}
           </span>
         </div>
       ),

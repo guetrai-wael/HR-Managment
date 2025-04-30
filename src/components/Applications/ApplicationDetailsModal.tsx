@@ -99,7 +99,7 @@ const ApplicationDetailsModal: React.FC<ApplicationDetailsModalProps> = ({
                 {application.job?.title || "Unknown Position"}
               </Descriptions.Item>
               <Descriptions.Item label="Department">
-                {application.job?.department || "Not specified"}
+                {application.job?.department?.name || "Not specified"}
               </Descriptions.Item>
               <Descriptions.Item label="Applied On">
                 {formatDate(application.applied_at)}

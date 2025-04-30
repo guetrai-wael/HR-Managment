@@ -24,9 +24,9 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
       setSession(session);
       setUser(session?.user || null);
-      setLoading(false);
+      setLoading(false); // Keep this line
 
-      // Profile and role creation logic
+      // Profile creation logic (Keep this part if you still want frontend profile check/creation as a fallback)
       if (
         (event === "SIGNED_IN" || event === "USER_UPDATED") &&
         session?.user
@@ -34,44 +34,31 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         // Ensure profile exists
         const { data: profile } = await supabase
           .from("profiles")
-          .select("*")
+          .select("id") // Only select id, no need for '*' if just checking existence
           .eq("id", session.user.id)
-          .single();
+          .maybeSingle(); // Use maybeSingle to handle null gracefully
 
         if (!profile) {
-          console.log("Creating missing profile for user:", session.user.id);
-          // Create missing profile
-          await supabase.from("profiles").insert([
-            {
-              id: session.user.id,
-              email: session.user.email,
-              full_name: session.user.email?.split("@")[0] || "User",
-            },
-          ]);
-        }
-
-        // Ensure role exists
-        const { data: userRole } = await supabase
-          .from("user_roles")
-          .select("*")
-          .eq("user_id", session.user.id)
-          .single();
-
-        if (!userRole) {
-          console.log("Assigning role to user:", session.user.id);
-          // Assign appropriate role
-          const { count } = await supabase
-            .from("user_roles")
-            .select("*", { count: "exact", head: true });
-
-          const roleId = count === 0 ? 1 : 2; // 1=admin, 2=employee
-
-          await supabase.from("user_roles").insert([
-            {
-              user_id: session.user.id,
-              role_id: roleId,
-            },
-          ]);
+          console.log(
+            "Frontend: Creating missing profile for user:",
+            session.user.id
+          );
+          // Attempt to create missing profile (backend trigger should ideally handle this)
+          try {
+            await supabase.from("profiles").insert([
+              {
+                id: session.user.id,
+                email: session.user.email,
+                // Use nullish coalescing for safer fallback
+                full_name:
+                  session.user.user_metadata?.full_name ??
+                  session.user.email?.split("@")[0] ??
+                  "User",
+              },
+            ]);
+          } catch (profileError) {
+            console.error("Frontend: Error creating profile:", profileError);
+          }
         }
       }
     });

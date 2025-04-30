@@ -1,102 +1,137 @@
 import supabase from "../supabaseClient";
-import { Application } from "../../types";
+import { Application, FilterValues, UserProfile } from "../../types";
 import { handleError } from "../../utils/errorHandler";
 
-// Update the fetchApplications function:
-export const fetchApplications = async (filters?: {
-  userId?: string;
-  jobId?: number;
-  departmentId?: string;
-  status?: string;
-  dateRange?: [string, string];
-  search?: string;
-}): Promise<Application[]> => {
+export const fetchApplications = async (
+  filters: FilterValues = {},
+  isAdmin: boolean,
+  userId?: string | null
+): Promise<Application[]> => {
   try {
-    // Create a query with proper joins
-    let query = supabase.from("applications").select(`
+    let query = supabase
+      .from("applications")
+      .select(
+        `
         *,
-        job:jobs(*), 
-        profile:profiles(*)
-      `);
+        job:jobs!inner( 
+          id,
+          title,
+          department_id, 
+          department:departments (id, name) 
+        ),
+        profile:profiles(id, full_name, email)
+      `
+      )
+      .order("applied_at", { ascending: false });
 
-    // Apply filters if provided
-    if (filters?.userId) {
-      query = query.eq("user_id", filters.userId);
+    // Apply user-specific filter if not admin
+    if (!isAdmin && userId) {
+      query = query.eq("user_id", userId);
     }
 
-    if (filters?.jobId) {
+    // Apply common filters
+    if (filters.jobId) {
       query = query.eq("job_id", filters.jobId);
     }
-
-    if (filters?.status) {
+    if (filters.status) {
       query = query.eq("status", filters.status);
     }
+    if (filters.dateRange && filters.dateRange.length === 2) {
+      const startDate = new Date(filters.dateRange[0]).toISOString();
+      const endDate = new Date(filters.dateRange[1]).toISOString();
+      query = query.gte("applied_at", startDate);
+      query = query.lte("applied_at", endDate);
+    }
 
-    if (filters?.departmentId) {
-      // First, get jobs that belong to this department
-      const { data: jobsInDepartment } = await supabase
-        .from("jobs")
-        .select("id")
-        .eq("department_id", filters.departmentId);
-
-      if (jobsInDepartment && jobsInDepartment.length > 0) {
-        // Get the job IDs in this department
-        const jobIds = jobsInDepartment.map((job) => job.id);
-        // Filter applications by those job IDs
-        query = query.in("job_id", jobIds);
-      } else {
-        // If no jobs found in this department, return empty result
-        return [];
+    // Admin-specific filters
+    if (isAdmin) {
+      if (filters.departmentId) {
+        query = query.eq("job.department.id", filters.departmentId);
+      }
+      if (filters.search) {
+        query = query.or(
+          `profile.full_name.ilike.%${filters.search}%,profile.email.ilike.%${filters.search}%,job.title.ilike.%${filters.search}%`
+        );
       }
     }
 
-    if (filters?.search) {
-      // Don't use OR operator directly, use filter() instead
-      const searchTerm = `%${filters.search}%`;
-
-      // Get profiles that match the search term first
-      const { data: matchingProfiles } = await supabase
-        .from("profiles")
-        .select("id")
-        .or(`full_name.ilike.${searchTerm},email.ilike.${searchTerm}`);
-
-      if (matchingProfiles && matchingProfiles.length > 0) {
-        // Get the profile IDs that matched
-        const profileIds = matchingProfiles.map((p) => p.id);
-        // Filter applications by those profile IDs
-        query = query.in("user_id", profileIds);
-      } else {
-        // No matching profiles, return empty result
-        return [];
-      }
-    }
-
-    if (filters?.dateRange && filters.dateRange[0] && filters.dateRange[1]) {
-      query = query
-        .gte("applied_at", filters.dateRange[0])
-        .lte("applied_at", filters.dateRange[1]);
-    }
-
-    const { data, error } = await query.order("applied_at", {
-      ascending: false,
-    });
+    const { data, error } = await query;
 
     if (error) throw error;
-
-    return data || [];
+    return (data as Application[]) || [];
   } catch (error) {
     handleError(error, { userMessage: "Failed to fetch applications" });
     return [];
   }
 };
-/**
- * Update an application status
- */
 
+export const getApplicationById = async (
+  id: number
+): Promise<Application | null> => {
+  try {
+    const { data, error } = await supabase
+      .from("applications")
+      .select(
+        `
+      *,
+      job:jobs(
+          id, title, description, requirements, responsibilities, location, salary, deadline, status, 
+          department:departments (id, name) 
+      ),
+      profile:profiles(id, full_name, email) 
+    `
+      )
+      .eq("id", id)
+      .single();
+
+    if (error) {
+      if (error.code === "PGRST116" && !data) {
+        console.warn(`Application not found for ID: ${id}`);
+        return null;
+      }
+      throw error;
+    }
+    return data as Application | null;
+  } catch (error) {
+    handleError(error, { userMessage: "Failed to fetch application details" });
+    return null;
+  }
+};
+
+// --- createApplication ---
+export const createApplication = async (
+  applicationData: Partial<Application>
+): Promise<Application | null> => {
+  try {
+    if (!applicationData.job_id || !applicationData.user_id) {
+      throw new Error("Missing job_id or user_id for application creation.");
+    }
+    const {
+      id: _id,
+      job: _job,
+      profile: _profile,
+      ...insertData
+    } = applicationData;
+
+    const { data, error } = await supabase
+      .from("applications")
+      .insert(insertData)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data as Application | null;
+  } catch (error) {
+    handleError(error, { userMessage: "Failed to submit application" });
+    return null;
+  }
+};
+
+// --- updateApplicationStatus ---
 export const updateApplicationStatus = async (
   id: number,
   status: string
-): Promise<Application> => {
+): Promise<Application | null> => {
   try {
     const { data, error } = await supabase
       .from("applications")
@@ -106,76 +141,40 @@ export const updateApplicationStatus = async (
       .single();
 
     if (error) throw error;
-    return data;
+    return data as Application | null;
   } catch (error) {
-    handleError(error, {
-      userMessage: `Failed to update application status to ${status}`,
-    });
-    throw error;
+    handleError(error, { userMessage: "Failed to update application status" });
+    return null;
   }
 };
 
-/**
- * Submit a new application
- */
-export const submitApplication = async (
-  applicationData: Partial<Application>
-): Promise<Application> => {
-  try {
-    const { data, error } = await supabase
-      .from("applications")
-      .insert([applicationData])
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
-  } catch (error) {
-    handleError(error, {
-      userMessage: "Error submitting application",
-    });
-    throw error;
-  }
-};
-
-/**
- * Delete an application
- */
-export const deleteApplication = async (id: number): Promise<void> => {
+// --- deleteApplication ---
+export const deleteApplication = async (id: number): Promise<boolean> => {
   try {
     const { error } = await supabase.from("applications").delete().eq("id", id);
-
     if (error) throw error;
+    return true;
   } catch (error) {
-    console.error("Error deleting application:", error);
-    throw error;
+    handleError(error, { userMessage: "Failed to delete application" });
+    return false;
   }
 };
 
-/**
- * Upload resume file and get URL
- */
-export const uploadResume = async (
-  userId: string,
-  file: File
-): Promise<string> => {
+// --- searchProfiles ---
+export const searchProfiles = async (
+  searchTerm: string
+): Promise<UserProfile[]> => {
   try {
-    const fileExt = file.name.split(".").pop();
-    const fileName = `${userId}_${Date.now()}.${fileExt}`;
-    const filePath = `resumes/${fileName}`;
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id, full_name, email")
+      .or(`full_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`)
+      .limit(10);
 
-    const { error: uploadError } = await supabase.storage
-      .from("applications")
-      .upload(filePath, file);
-
-    if (uploadError) throw uploadError;
-
-    const { data } = supabase.storage
-      .from("applications")
-      .getPublicUrl(filePath);
-    return data.publicUrl;
+    if (error) throw error;
+    return (data as UserProfile[]) || [];
   } catch (error) {
-    console.error("Error uploading resume:", error);
-    throw error;
+    handleError(error, { userMessage: "Failed to search profiles" });
+    return [];
   }
 };

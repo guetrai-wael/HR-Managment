@@ -20,50 +20,54 @@ const JobCard: React.FC<JobCardProps> = ({
   onClick,
   onActionClick,
   actionText = "View Details",
-  // New action handlers
   onApplyClick,
   onEditClick,
   onDeleteClick,
-  // Visibility controls with sensible defaults
   showApplyButton = true,
   showEditButton,
   showDeleteButton,
 }) => {
-  // Icon mapping
+  // --- Deadline Logic ---
+  const isPastDeadline = (() => {
+    if (!deadline) return false;
+    const deadlineDate = new Date(deadline);
+    deadlineDate.setHours(23, 59, 59, 999);
+    const today = new Date();
+    return today > deadlineDate;
+  })();
+
+  const effectiveStatus = isPastDeadline ? "Closed" : status;
+  // --- End Deadline Logic ---
+
   const iconMap = {
     hot: <FireFilled style={{ color: "#6068CA" }} />,
     star: <StarFilled style={{ color: "#7F56D9" }} />,
     featured: <HeartFilled style={{ color: "#7F56D9" }} />,
   };
 
-  // Status badge color mapping
-  const getStatusColor = (status: string) => {
-    switch (status?.toLowerCase()) {
+  const getStatusColor = (statusStr: string | undefined) => {
+    switch (statusStr?.toLowerCase()) {
+      case "closed":
+        return { bg: "#FEE4E2", text: "#D92D20" };
       case "open":
         return { bg: "#ECFDF3", text: "#027A48" };
-      case "new":
-        return { bg: "#EFF8FF", text: "#175CD3" };
-      case "featured":
-        return { bg: "#FFF6ED", text: "#B93815" };
       default:
         return { bg: "#F9F5FF", text: "#6941C6" };
     }
   };
+  const statusColor = getStatusColor(effectiveStatus);
 
-  const statusColor = status ? getStatusColor(status) : undefined;
-
-  // Format deadline date and calculate days remaining
-  const formatDeadline = (deadline: string | Date | undefined) => {
-    if (!deadline) return { formatted: null, daysLeft: null };
-
+  const formatDeadline = (deadlineStr: string | Date | undefined) => {
+    if (!deadlineStr) return { formatted: null, daysLeft: null };
     const deadlineDate =
-      deadline instanceof Date ? deadline : new Date(deadline);
-
-    // Check if valid date
+      deadlineStr instanceof Date ? deadlineStr : new Date(deadlineStr);
     if (isNaN(deadlineDate.getTime()))
       return { formatted: null, daysLeft: null };
 
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    deadlineDate.setHours(0, 0, 0, 0);
+
     const diffTime = deadlineDate.getTime() - today.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
@@ -76,18 +80,19 @@ const JobCard: React.FC<JobCardProps> = ({
       daysLeft: diffDays,
     };
   };
-
   const { formatted: formattedDeadline, daysLeft } = formatDeadline(deadline);
-
+  const isApplyDisabled = !showApplyButton || isPastDeadline;
   return (
     <div
-      className="flex flex-col bg-white rounded-lg shadow-sm overflow-hidden h-full border border-gray-100 hover:shadow-md transition-shadow cursor-pointer"
+      className={`flex flex-col bg-white rounded-lg shadow-sm overflow-hidden h-full border border-gray-100 transition-shadow ${
+        onClick ? "cursor-pointer hover:shadow-md" : ""
+      } ${isPastDeadline ? "opacity-75" : ""}`}
       style={{ minHeight: "260px" }}
       onClick={onClick}
     >
       {/* Card Content */}
       <div className="flex flex-col p-4 pb-0 gap-3 flex-grow">
-        {/* Header with icon and title */}
+        {/* Header */}
         <div className="job-card-header flex justify-between items-center w-full">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 pr-2">
             <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-lg flex-shrink-0 flex items-center justify-center bg-gradient-to-r from-[#29359B] to-[#6068CA]">
@@ -97,8 +102,7 @@ const JobCard: React.FC<JobCardProps> = ({
               {title}
             </h3>
           </div>
-
-          {/* Action icons with guaranteed space */}
+          {/* Actions */}
           <div className="job-card-actions flex-shrink-0 ml-2">
             {showEditButton && (
               <Tooltip title="Edit job">
@@ -134,7 +138,7 @@ const JobCard: React.FC<JobCardProps> = ({
         {/* Description */}
         <p className="text-sm text-gray-500 line-clamp-3">{description}</p>
 
-        {/* Deadline - Complete version with days remaining */}
+        {/* Deadline */}
         {formattedDeadline && (
           <div className="flex items-center justify-between text-sm text-gray-500 mt-1">
             <div className="flex items-center">
@@ -144,7 +148,7 @@ const JobCard: React.FC<JobCardProps> = ({
               />
               <span>Apply by: {formattedDeadline}</span>
             </div>
-            {daysLeft !== null && daysLeft >= 0 && (
+            {daysLeft !== null && daysLeft >= 0 && !isPastDeadline && (
               <span
                 className={`text-xs ${
                   daysLeft <= 3 ? "text-red-500 font-medium" : ""
@@ -155,11 +159,16 @@ const JobCard: React.FC<JobCardProps> = ({
                   : `${daysLeft} day${daysLeft !== 1 ? "s" : ""} left`}
               </span>
             )}
+            {isPastDeadline && (
+              <span className="text-xs text-red-500 font-medium">
+                Deadline Passed
+              </span>
+            )}
           </div>
         )}
 
-        {/* Status Badge */}
-        {status && (
+        {/* Status Badge - Use effectiveStatus */}
+        {effectiveStatus && (
           <div className="flex mt-auto mb-3">
             <span
               className="px-2 py-0.5 text-xs font-medium rounded-full"
@@ -168,7 +177,7 @@ const JobCard: React.FC<JobCardProps> = ({
                 color: statusColor?.text,
               }}
             >
-              {status}
+              {effectiveStatus}
             </span>
           </div>
         )}
@@ -190,21 +199,34 @@ const JobCard: React.FC<JobCardProps> = ({
             {actionText}
           </Button>
 
-          {/* Apply Button (usually for regular users) */}
+          {/* Apply Button - Disable if needed */}
           {showApplyButton && (
-            <Tooltip title="Apply for this job">
-              <Button
-                type="primary"
-                icon={<SendOutlined />}
-                size="small"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onApplyClick?.();
-                }}
-                className="bg-[#6941C6] hover:bg-[#8662e3]"
-              >
-                <span className="hidden sm:inline">Apply</span>
-              </Button>
+            <Tooltip
+              title={
+                isPastDeadline
+                  ? "Application deadline passed"
+                  : "Apply for this job"
+              }
+            >
+              {/* Wrap button in span for tooltip to work when disabled */}
+              <span className={isApplyDisabled ? "cursor-not-allowed" : ""}>
+                <Button
+                  type="primary"
+                  icon={<SendOutlined />}
+                  size="small"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (!isApplyDisabled) {
+                      onApplyClick?.();
+                    }
+                  }}
+                  className="bg-[#6941C6] hover:bg-[#8662e3]"
+                  disabled={isApplyDisabled}
+                  style={isApplyDisabled ? { pointerEvents: "none" } : {}}
+                >
+                  <span className="hidden sm:inline">Apply</span>
+                </Button>
+              </span>
             </Tooltip>
           )}
         </div>

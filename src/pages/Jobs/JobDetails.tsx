@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Button, Descriptions, Tag, Modal, Spin, message } from "antd";
+import { Button, Descriptions, Tag, Modal, Spin, message, Alert } from "antd";
 import { ArrowLeftOutlined, SendOutlined } from "@ant-design/icons";
 import { Header } from "../../components/common";
 import { ApplicationForm } from "../../components/Jobs/index";
@@ -20,7 +20,6 @@ const JobDetails: React.FC = () => {
   const [job, setJob] = useState<Job | null>(null);
   const [alreadyApplied, setAlreadyApplied] = useState(false);
 
-  // Add fetchId ref to track the latest request
   const fetchId = useRef(0);
 
   useEffect(() => {
@@ -31,7 +30,6 @@ const JobDetails: React.FC = () => {
       setLoading(true);
 
       try {
-        // Add timeout protection
         const jobData = await Promise.race([
           getJobById(id),
           new Promise<never>((_, reject) =>
@@ -39,12 +37,10 @@ const JobDetails: React.FC = () => {
           ),
         ]);
 
-        // Only update state if this is still the most recent fetch
         if (fetchId.current === currentFetch) {
           setJob(jobData);
         }
 
-        // Check if user already applied
         if (user && fetchId.current === currentFetch) {
           const { data: applicationData, error: applicationError } =
             await supabase
@@ -61,14 +57,12 @@ const JobDetails: React.FC = () => {
           }
         }
       } catch (error) {
-        // Only update error state if this is still the most recent fetch
         if (fetchId.current === currentFetch) {
           handleError(error, {
             userMessage: "Failed to load job details",
           });
         }
       } finally {
-        // Only reset loading if this is still the most recent fetch
         if (fetchId.current === currentFetch) {
           setLoading(false);
         }
@@ -77,11 +71,23 @@ const JobDetails: React.FC = () => {
 
     fetchJob();
 
-    // Cleanup function for unmounting
     return () => {
-      fetchId.current = -1; // Mark all in-flight requests as stale
+      fetchId.current = -1;
     };
   }, [id, user]);
+
+  // --- Deadline Logic ---
+  const isPastDeadline = (() => {
+    if (!job?.deadline) return false;
+    const deadlineDate = new Date(job.deadline);
+    deadlineDate.setHours(23, 59, 59, 999);
+    const today = new Date();
+    return today > deadlineDate;
+  })();
+
+  // Determine the status to display
+  const effectiveStatus = isPastDeadline ? "Closed" : job?.status;
+  // --- End Deadline Logic ---
 
   const handleApply = () => {
     if (!user) {
@@ -95,6 +101,12 @@ const JobDetails: React.FC = () => {
       return;
     }
 
+    // <<< Add check for past deadline >>>
+    if (isPastDeadline) {
+      message.warning("The application deadline for this job has passed.");
+      return;
+    }
+
     setApplyModalVisible(true);
   };
 
@@ -104,29 +116,32 @@ const JobDetails: React.FC = () => {
     message.success("Application submitted successfully!");
   };
 
-  if (!id) {
-    return <div>Job not found</div>;
+  if (!id && !loading) {
+    return (
+      <Alert message="Job ID is missing or invalid." type="error" showIcon />
+    );
   }
 
-  // Use mock data until the real data loads
-  const jobData = job || {
-    id: parseInt(id),
-    title: "Loading...",
-    description: "Loading job description...",
-    requirements: "Loading requirements...",
-    responsibilities: "Loading responsibilities...",
-    status: "Loading",
-    deadline: "",
-    location: "Loading",
-    salary: "Loading",
-    department: "Loading",
-    posted_at: "",
-  };
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <Spin size="large" />
+      </div>
+    );
+  }
 
-  // Rest of your component remains the same
+  if (!job) {
+    return (
+      <Alert message="Job not found." type="warning" showIcon className="m-8" />
+    );
+  }
+
+  // Determine if Apply button should be disabled
+  const isApplyDisabled = alreadyApplied || isAdmin || isPastDeadline;
+
   return (
     <div className="flex flex-col h-full overflow-auto py-4">
-      {/* Header section with back button */}
+      {/* Header */}
       <div className="px-4 md:px-8 mb-6">
         <Button
           icon={<ArrowLeftOutlined />}
@@ -135,92 +150,92 @@ const JobDetails: React.FC = () => {
         >
           <span>Back to Jobs</span>
         </Button>
-        {/* Use truncate to prevent very long titles from breaking layout */}
-        <Header
-          title={<span className="truncate block">{jobData.title}</span>}
-        />
+        <Header title={<span className="truncate block">{job.title}</span>} />
       </div>
 
-      {loading ? (
-        <div className="flex justify-center p-12 md:p-20">
-          <Spin size="large" />
+      {/* Content */}
+      <div className="px-4 md:px-8 space-y-6 md:space-y-8">
+        {/* Status tag and apply button */}
+        <div className="flex justify-between items-center flex-wrap gap-4">
+          {/* <<< Use effectiveStatus for Tag >>> */}
+          <Tag
+            color={effectiveStatus === "Closed" ? "red" : "green"}
+            className="text-sm py-1 px-3"
+          >
+            {effectiveStatus}
+          </Tag>
+          <Button
+            type="primary"
+            icon={<SendOutlined />}
+            onClick={handleApply}
+            disabled={isApplyDisabled} // <<< Use combined disabled state
+            className="min-w-[120px]"
+          >
+            {alreadyApplied
+              ? "Applied"
+              : isAdmin
+              ? "Admin Mode"
+              : isPastDeadline // <<< Add text for past deadline
+              ? "Deadline Passed"
+              : "Apply Now"}
+          </Button>
         </div>
-      ) : (
-        <div className="px-4 md:px-8 space-y-6 md:space-y-8">
-          {/* Status tag and apply button - responsive flex layout */}
-          <div className="flex justify-between items-center flex-wrap gap-4">
-            <Tag color="green" className="text-sm py-1 px-3">
-              {jobData.status}
-            </Tag>
-            <Button
-              type="primary"
-              icon={<SendOutlined />}
-              onClick={handleApply}
-              disabled={alreadyApplied || isAdmin}
-              className="min-w-[120px]"
-            >
-              {alreadyApplied
-                ? "Applied"
-                : isAdmin
-                ? "Admin Mode"
-                : "Apply Now"}
-            </Button>
-          </div>
 
-          {/* Job details in responsive descriptions component */}
-          <div className="job-details-table max-w-xl w-full overflow-hidden">
-            <Descriptions
-              bordered
-              column={1}
-              className="job-details-descriptions"
-              size="small"
-              labelStyle={{ fontWeight: 500 }}
-            >
-              <Descriptions.Item label="Department">
-                {jobData.department}
-              </Descriptions.Item>
-              <Descriptions.Item label="Location">
-                {jobData.location}
-              </Descriptions.Item>
-              <Descriptions.Item label="Salary">
-                {jobData.salary}
-              </Descriptions.Item>
-              <Descriptions.Item label="Posted Date">
-                {jobData.posted_at}
-              </Descriptions.Item>
-              <Descriptions.Item label="Deadline">
-                {jobData.deadline}
-              </Descriptions.Item>
-            </Descriptions>
-          </div>
-
-          {/* Job information sections with word-break for mobile */}
-          <div className="max-w-3xl">
-            <h3 className="text-lg font-medium mb-3">Description</h3>
-            <p className="whitespace-pre-line break-words text-gray-700">
-              {jobData.description}
-            </p>
-          </div>
-
-          <div className="max-w-3xl">
-            <h3 className="text-lg font-medium mb-3">Requirements</h3>
-            <p className="whitespace-pre-line break-words text-gray-700">
-              {jobData.requirements}
-            </p>
-          </div>
-
-          <div className="max-w-3xl">
-            <h3 className="text-lg font-medium mb-3">Responsibilities</h3>
-            <p className="whitespace-pre-line break-words text-gray-700">
-              {jobData.responsibilities}
-            </p>
-          </div>
+        {/* Job details */}
+        <div className="job-details-table max-w-xl w-full overflow-hidden">
+          <Descriptions
+            bordered
+            column={1}
+            className="job-details-descriptions"
+            size="small"
+            labelStyle={{ fontWeight: 500 }}
+          >
+            <Descriptions.Item label="Department">
+              {job.department?.name || "Not specified"}
+            </Descriptions.Item>
+            <Descriptions.Item label="Location">
+              {job.location}
+            </Descriptions.Item>
+            <Descriptions.Item label="Salary">
+              {job.salary || "Not specified"}
+            </Descriptions.Item>
+            <Descriptions.Item label="Posted Date">
+              {job.posted_at
+                ? new Date(job.posted_at).toLocaleDateString()
+                : "N/A"}
+            </Descriptions.Item>
+            <Descriptions.Item label="Deadline">
+              {job.deadline
+                ? new Date(job.deadline).toLocaleDateString()
+                : "N/A"}
+            </Descriptions.Item>
+          </Descriptions>
         </div>
-      )}
 
-      {/* Application Modal - Improved for mobile */}
+        {/* Description, Requirements, Responsibilities */}
+        <div className="max-w-3xl">
+          <h3 className="text-lg font-medium mb-3">Description</h3>
+          <p className="whitespace-pre-line break-words text-gray-700">
+            {job.description || "No description provided."}
+          </p>
+        </div>
+        <div className="max-w-3xl">
+          <h3 className="text-lg font-medium mb-3">Requirements</h3>
+          <p className="whitespace-pre-line break-words text-gray-700">
+            {job.requirements || "No requirements provided."}
+          </p>
+        </div>
+        <div className="max-w-3xl">
+          <h3 className="text-lg font-medium mb-3">Responsibilities</h3>
+          <p className="whitespace-pre-line break-words text-gray-700">
+            {job.responsibilities || "No responsibilities provided."}
+          </p>
+        </div>
+      </div>
+
+      {/* Application Modal */}
       <Modal
-        title={`Apply for ${jobData.title}`}
+        title={`Apply for ${job.title}`}
         open={applyModalVisible}
         onCancel={() => setApplyModalVisible(false)}
         footer={null}
@@ -231,8 +246,8 @@ const JobDetails: React.FC = () => {
         maskClosable={false}
       >
         <ApplicationForm
-          jobId={jobData.id}
-          jobTitle={jobData.title}
+          jobId={job.id}
+          jobTitle={job.title}
           onSuccess={handleApplicationSuccess}
           onCancel={() => setApplyModalVisible(false)}
         />

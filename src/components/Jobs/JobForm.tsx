@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { Form, Input, Select, DatePicker, Button } from "antd";
+import { Form, Input, Select, DatePicker, Button, Spin, Alert } from "antd";
 import { useUser, useJobActions } from "../../hooks";
 import dayjs from "dayjs";
 import { Job, JobFormProps, JobFormValues } from "../../types";
+import { Department } from "../../types/models";
+import { fetchDepartments } from "../../services/api";
 import { handleError } from "../../utils/errorHandler";
 
 const { TextArea } = Input;
@@ -22,24 +24,37 @@ const JobForm: React.FC<JobFormProps> = ({
     loading: submitting,
   } = useJobActions();
 
-  const [departments] = useState<string[]>([
-    "Engineering",
-    "Marketing",
-    "Finance",
-    "HR",
-    "Operations",
-    "Design",
-    "Sales",
-    "Customer Support",
-  ]);
-
+  // State for departments list and loading/error status
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [loadingDepartments, setLoadingDepartments] = useState(true);
+  const [departmentError, setDepartmentError] = useState<string | null>(null);
   const isEditMode = !!jobId;
 
+  // Fetch departments on component mount
   useEffect(() => {
-    // If in edit mode and initialValues are provided, set form values
+    const loadDepartments = async () => {
+      setLoadingDepartments(true);
+      setDepartmentError(null);
+      try {
+        const fetchedDepartments = await fetchDepartments();
+        setDepartments(fetchedDepartments || []);
+      } catch (error) {
+        setDepartmentError("Failed to load departments list.");
+        handleError(error, {
+          userMessage: "Could not load departments for the form.",
+        });
+      } finally {
+        setLoadingDepartments(false);
+      }
+    };
+    loadDepartments();
+  }, []);
+
+  useEffect(() => {
     if (isEditMode && initialValues) {
       form.setFieldsValue({
         ...initialValues,
+        department_id: initialValues.department_id,
         deadline: initialValues.deadline
           ? dayjs(initialValues.deadline)
           : undefined,
@@ -48,6 +63,7 @@ const JobForm: React.FC<JobFormProps> = ({
       form.resetFields();
     }
   }, [form, initialValues, isEditMode]);
+
   const handleCancel = () => {
     form.resetFields();
     onCancel();
@@ -61,7 +77,7 @@ const JobForm: React.FC<JobFormProps> = ({
         requirements: values.requirements || "No requirements specified",
         responsibilities:
           values.responsibilities || "No responsibilities specified",
-        department: values.department || "General",
+        department_id: values.department_id,
         location: values.location || "Remote",
         status: values.status || "Open",
         salary: values.salary || null,
@@ -75,11 +91,9 @@ const JobForm: React.FC<JobFormProps> = ({
 
       let success = false;
       if (isEditMode && jobId) {
-        // Use the hook to update
         const updatedJob = await handleUpdateJob(jobId, jobData);
         success = !!updatedJob;
       } else {
-        // Use the hook to create
         const newJob = await handleCreateJob(jobData);
         success = !!newJob;
       }
@@ -98,12 +112,17 @@ const JobForm: React.FC<JobFormProps> = ({
       form={form}
       layout="vertical"
       onFinish={handleSubmit}
-      initialValues={{
-        status: "New",
-        department: "Engineering",
-      }}
       className="job-form-container max-w-full"
     >
+      {loadingDepartments && <Spin tip="Loading departments..." />}
+      {departmentError && !loadingDepartments && (
+        <Alert
+          message={departmentError}
+          type="error"
+          showIcon
+          className="mb-4"
+        />
+      )}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6">
         {/* Left column */}
         <div>
@@ -116,14 +135,18 @@ const JobForm: React.FC<JobFormProps> = ({
           </Form.Item>
 
           <Form.Item
-            name="department"
+            name="department_id"
             label="Department"
             rules={[{ required: true, message: "Please select a department" }]}
           >
-            <Select>
+            <Select
+              placeholder="Select a department"
+              loading={loadingDepartments}
+              disabled={loadingDepartments || !!departmentError}
+            >
               {departments.map((dept) => (
-                <Option key={dept} value={dept}>
-                  {dept}
+                <Option key={dept.id} value={dept.id}>
+                  {dept.name}
                 </Option>
               ))}
             </Select>
@@ -222,6 +245,7 @@ const JobForm: React.FC<JobFormProps> = ({
           htmlType="submit"
           loading={submitting}
           className="!w-full sm:!w-auto"
+          disabled={loadingDepartments || !!departmentError} // Disable submit if departments failed
         >
           {isEditMode ? "Update Job" : "Post Job"}
         </Button>

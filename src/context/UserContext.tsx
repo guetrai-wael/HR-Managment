@@ -1,11 +1,11 @@
-import { createContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useEffect, useState, ReactNode, useRef } from "react"; // Import useRef
 import supabase from "../services/supabaseClient";
 import { Session, User } from "@supabase/supabase-js";
 
 interface UserContextType {
   user: User | null;
   session: Session | null;
-  loading: boolean;
+  loading: boolean; // Represents the initial loading state of the context
 }
 
 export const UserContext = createContext<UserContextType>({
@@ -18,75 +18,129 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  // Ref to track if initial load is done
+  const initialLoadComplete = useRef(false);
 
   useEffect(() => {
-    // Auth state change listener
-    const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
-      setSession(session);
-      setUser(session?.user || null);
-      setLoading(false); // Keep this line
+    console.log("UserProvider Effect: Mounting.");
+    setLoading(true); // Ensure loading is true on mount
+    initialLoadComplete.current = false;
 
-      // Profile creation logic (Keep this part if you still want frontend profile check/creation as a fallback)
-      if (
-        (event === "SIGNED_IN" || event === "USER_UPDATED") &&
-        session?.user
-      ) {
-        // Ensure profile exists
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("id") // Only select id, no need for '*' if just checking existence
-          .eq("id", session.user.id)
-          .maybeSingle(); // Use maybeSingle to handle null gracefully
-
-        if (!profile) {
-          console.log(
-            "Frontend: Creating missing profile for user:",
-            session.user.id
-          );
-          // Attempt to create missing profile (backend trigger should ideally handle this)
-          try {
-            await supabase.from("profiles").insert([
-              {
-                id: session.user.id,
-                email: session.user.email,
-                // Use nullish coalescing for safer fallback
-                full_name:
-                  session.user.user_metadata?.full_name ??
-                  session.user.email?.split("@")[0] ??
-                  "User",
-              },
-            ]);
-          } catch (profileError) {
-            console.error("Frontend: Error creating profile:", profileError);
-          }
-        }
-      }
-    });
-
-    // Initial session check
+    // 1. Initial session check - This determines the *initial* loading state
     supabase.auth
       .getSession()
-      .then((response) => {
-        const session = response.data.session;
+      .then(({ data: { session: initialSession } }) => {
         console.log(
-          "Session fetch result:",
-          session ? "Session exists" : "No session found"
+          "UserProvider: Initial getSession complete.",
+          initialSession ? "Session found." : "No session."
         );
-        setSession(session);
-        setUser(session?.user || null);
+        // Set initial state based on this check
+        setSession(initialSession);
+        setUser(initialSession?.user ?? null);
       })
       .catch((error) => {
-        console.error("Session fetch error details:", error);
+        console.error("UserProvider: Initial getSession error:", error);
+        // Ensure state is null on error
+        setSession(null);
+        setUser(null);
       })
       .finally(() => {
-        console.log("Setting loading to false");
+        // Set loading false ONLY after the initial check is fully complete
+        console.log(
+          "UserProvider: Initial getSession finally block. Setting loading false."
+        );
         setLoading(false);
+        initialLoadComplete.current = true;
       });
 
+    // 2. Auth state change listener - This updates state *after* initial load
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      async (event, currentSession) => {
+        console.log(
+          `UserProvider: onAuthStateChange event: ${event}`,
+          currentSession ? "Session updated." : "Session removed."
+        );
+        // Simply update the session and user state
+        setSession(currentSession);
+        setUser(currentSession?.user ?? null);
+
+        // DO NOT set loading state here. The initial load is handled above.
+        // This listener only reacts to subsequent changes (login, logout, token refresh).
+
+        // --- Keep Profile Check/Creation Logic (Optional Fallback) ---
+        // This can still run on SIGNED_IN or INITIAL_SESSION if needed
+        if (
+          (event === "SIGNED_IN" || event === "INITIAL_SESSION") &&
+          currentSession?.user
+        ) {
+          // Check only if initial load is complete to avoid race conditions
+          if (initialLoadComplete.current) {
+            console.log(
+              "UserProvider: Checking/Creating profile based on auth event."
+            );
+            // (Profile check/creation logic remains the same as before)
+            const { data: profile, error: profileError } = await supabase
+              .from("profiles")
+              .select("id")
+              .eq("id", currentSession.user.id)
+              .maybeSingle();
+
+            if (profileError) {
+              console.error(
+                "UserProvider: Error checking profile existence:",
+                profileError
+              );
+            } else if (!profile) {
+              console.log(
+                "UserProvider: Profile missing for user:",
+                currentSession.user.id,
+                "Attempting creation."
+              );
+              try {
+                const { error: insertError } = await supabase
+                  .from("profiles")
+                  .insert([
+                    {
+                      id: currentSession.user.id,
+                      email: currentSession.user.email,
+                      full_name:
+                        currentSession.user.user_metadata?.full_name ??
+                        currentSession.user.email?.split("@")[0] ??
+                        "User",
+                    },
+                  ]);
+                if (insertError) throw insertError;
+                console.log("UserProvider: Profile created successfully.");
+              } catch (profileInsertError) {
+                console.error(
+                  "UserProvider: Error creating profile:",
+                  profileInsertError
+                );
+              }
+            } else {
+              console.log(
+                "UserProvider: Profile exists for user:",
+                currentSession.user.id
+              );
+            }
+          } else {
+            console.log(
+              "UserProvider: Skipping profile check as initial load is not complete."
+            );
+          }
+        }
+        // --- End Profile Check ---
+      }
+    );
+
+    // Cleanup function
     return () => {
-      data.subscription.unsubscribe();
+      console.log(
+        "UserProvider Effect: Unmounting. Unsubscribing auth listener."
+      );
+      authListener.subscription.unsubscribe();
     };
-  }, []);
+  }, []); // Empty dependency array ensures this runs only once on mount
 
   return (
     <UserContext.Provider value={{ user, session, loading }}>

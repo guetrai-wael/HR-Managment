@@ -1,23 +1,41 @@
 import supabase from "../supabaseClient";
 import { Application, FilterValues, UserProfile } from "../../types";
 import { handleError } from "../../utils/errorHandler";
-
+import { Dayjs } from "dayjs";
 export const fetchApplications = async (
   filters: FilterValues = {},
   isAdmin: boolean,
   userId?: string | null
 ): Promise<Application[]> => {
   try {
+    console.log("fetchApplications: Checking Supabase session before query...");
+    const { data: sessionData, error: sessionError } =
+      await supabase.auth.getSession();
+    if (sessionError) {
+      console.error("fetchApplications: Error getting session:", sessionError);
+    } else if (!sessionData.session && !isAdmin) {
+      console.warn(
+        "fetchApplications: No active session found, returning empty array."
+      );
+      return [];
+    } else {
+      console.log(
+        "fetchApplications: Session check complete.",
+        sessionData.session
+          ? "Session active."
+          : "No session (Admin mode or public data)."
+      );
+    }
     let query = supabase
       .from("applications")
       .select(
         `
         *,
-        job:jobs!inner( 
+        job:jobs!inner(
           id,
           title,
-          department_id, 
-          department:departments (id, name) 
+          department_id,
+          department:departments (id, name)
         ),
         profile:profiles(id, full_name, email)
       `
@@ -27,6 +45,12 @@ export const fetchApplications = async (
     // Apply user-specific filter if not admin
     if (!isAdmin && userId) {
       query = query.eq("user_id", userId);
+    } else if (!isAdmin && !userId) {
+      // If not admin and userId is somehow missing, prevent fetching all data
+      console.warn(
+        "fetchApplications: Non-admin user ID missing, returning empty array."
+      );
+      return [];
     }
 
     // Apply common filters
@@ -36,30 +60,65 @@ export const fetchApplications = async (
     if (filters.status) {
       query = query.eq("status", filters.status);
     }
-    if (filters.dateRange && filters.dateRange.length === 2) {
-      const startDate = new Date(filters.dateRange[0]).toISOString();
-      const endDate = new Date(filters.dateRange[1]).toISOString();
+    if (
+      filters.dateRange &&
+      filters.dateRange.length === 2 &&
+      filters.dateRange[0] &&
+      filters.dateRange[1]
+    ) {
+      const startDate = (filters.dateRange[0] as Dayjs)
+        .startOf("day")
+        .toISOString();
+      const endDate = (filters.dateRange[1] as Dayjs)
+        .endOf("day")
+        .toISOString();
       query = query.gte("applied_at", startDate);
       query = query.lte("applied_at", endDate);
     }
 
     // Admin-specific filters
     if (isAdmin) {
-      if (filters.departmentId) {
-        query = query.eq("job.department.id", filters.departmentId);
+      if (typeof filters.departmentId === "number") {
+        console.log(
+          `Applying department filter: job.department_id eq ${filters.departmentId}`
+        );
+        query = query.eq("job.department_id", filters.departmentId);
+      } else {
+        console.log(
+          "No specific department filter applied (departmentId is 'all' or undefined)."
+        );
       }
+
       if (filters.search) {
+        const searchTerm = `%${filters.search}%`;
         query = query.or(
-          `profile.full_name.ilike.%${filters.search}%,profile.email.ilike.%${filters.search}%,job.title.ilike.%${filters.search}%`
+          `profile.full_name.ilike.${searchTerm},profile.email.ilike.${searchTerm},job.title.ilike.${searchTerm}`
         );
       }
     }
 
-    const { data, error } = await query;
+    console.log("Executing query...");
+    const { data, error, status } = await query;
 
-    if (error) throw error;
+    if (error) {
+      console.error("Supabase fetch error:", {
+        status,
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+      });
+      if (status === 401 || status === 403) {
+        console.error(
+          "Authorization error detected. Token might be invalid or expired."
+        );
+      }
+      throw error;
+    }
+
+    console.log(`Fetched ${data?.length || 0} applications successfully.`);
     return (data as Application[]) || [];
   } catch (error) {
+    console.error("Error caught in fetchApplications:", error);
     handleError(error, { userMessage: "Failed to fetch applications" });
     return [];
   }

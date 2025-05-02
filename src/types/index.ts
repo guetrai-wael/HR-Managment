@@ -212,6 +212,6 @@ export interface FilterValues {
   jobId?: number; // Filter by specific job
   departmentId?: number | "all"; // Filter by department (use 'all' or specific ID)
   status?: string; // Filter by application or job status
-  dateRange?: [Dayjs | null, Dayjs | null]; // Filter by date range (using Dayjs for pickers)
+  dateRange?: [string | null, string | null]; // Filter by date range (using Dayjs for pickers)
   search?: string; // Generic search term
 }

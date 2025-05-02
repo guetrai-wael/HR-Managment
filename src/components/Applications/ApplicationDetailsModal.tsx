@@ -1,27 +1,33 @@
 import React from "react";
-import { Modal, Button, Descriptions, Divider, Avatar, Typography } from "antd";
+import {
+  Modal,
+  Button,
+  Descriptions,
+  Divider,
+  Avatar,
+  Typography,
+  Empty,
+} from "antd";
 import {
   UserOutlined,
   CalendarOutlined,
   FileOutlined,
+  FilePdfOutlined,
 } from "@ant-design/icons";
 import { Application } from "../../types";
 import ApplicationStatusBadge from "./ApplicationStatusBadge";
-import ApplicationActions from "./ApplicationActions";
+// <<< ADD THIS IMPORT >>>
+import { formatDate } from "../../utils/formatDate"; // Assuming this path is correct
 
-const { Title, Text } = Typography;
+const { Title, Text, Paragraph } = Typography;
 
 interface ApplicationDetailsModalProps {
   visible: boolean;
   application: Application | null;
   isAdmin: boolean;
   onClose: () => void;
-  onViewResume?: (url: string) => void;
+  onViewResume?: (url: string | null) => void;
   onViewProfile?: (userId: string) => void;
-  onStatusUpdate?: (
-    id: number,
-    status: "pending" | "accepted" | "rejected" | "interviewing"
-  ) => void;
 }
 
 /**
@@ -34,21 +40,10 @@ const ApplicationDetailsModal: React.FC<ApplicationDetailsModalProps> = ({
   onClose,
   onViewResume,
   onViewProfile,
-  onStatusUpdate,
 }) => {
   if (!application) {
     return null;
   }
-
-  // Format date for better readability
-  const formatDate = (dateString: string) => {
-    if (!dateString) return "-";
-    const date = new Date(dateString);
-    return new Intl.DateTimeFormat("en-US", {
-      dateStyle: "medium",
-      timeStyle: "short",
-    }).format(date);
-  };
 
   return (
     <Modal
@@ -61,7 +56,9 @@ const ApplicationDetailsModal: React.FC<ApplicationDetailsModalProps> = ({
         </Button>,
       ]}
       className="application-details-modal"
+      title={`Application Details - ${application.job?.title || "Unknown Job"}`}
     >
+      {/* Check if application exists before trying to render details */}
       {application && (
         <div className="space-y-6">
           {/* Applicant Information (Admin Only) */}
@@ -83,6 +80,18 @@ const ApplicationDetailsModal: React.FC<ApplicationDetailsModalProps> = ({
                   <Text type="secondary">
                     {application.profile?.email || application.user_id}
                   </Text>
+                  {/* View Profile Button */}
+                  {onViewProfile && (
+                    <Button
+                      size="small"
+                      type="link"
+                      icon={<UserOutlined />}
+                      onClick={() => onViewProfile(application.user_id)}
+                      className="p-0 ml-2"
+                    >
+                      View Profile
+                    </Button>
+                  )}
                 </div>
               </div>
               <Divider className="my-4" />
@@ -102,6 +111,7 @@ const ApplicationDetailsModal: React.FC<ApplicationDetailsModalProps> = ({
                 {application.job?.department?.name || "Not specified"}
               </Descriptions.Item>
               <Descriptions.Item label="Applied On">
+                {/* Use imported formatDate */}
                 {formatDate(application.applied_at)}
               </Descriptions.Item>
               <Descriptions.Item label="Status">
@@ -117,26 +127,36 @@ const ApplicationDetailsModal: React.FC<ApplicationDetailsModalProps> = ({
             <Title level={5} className="mb-3">
               <FileOutlined className="mr-2" /> Cover Letter
             </Title>
-            <div className="bg-gray-50 p-4 rounded-md whitespace-pre-line max-h-60 overflow-auto border border-gray-200">
-              {application.cover_letter || "No cover letter provided."}
-            </div>
+            {application.cover_letter ? (
+              <Paragraph className="whitespace-pre-line bg-gray-50 p-4 rounded border border-gray-200 max-h-60 overflow-auto">
+                {application.cover_letter}
+              </Paragraph>
+            ) : (
+              <Text type="secondary">No cover letter provided.</Text>
+            )}
           </div>
 
           <Divider className="my-4" />
 
-          {/* Actions */}
-          {isAdmin && (
-            <div className="flex justify-end">
-              <ApplicationActions
-                application={application}
-                isAdmin={isAdmin}
-                onViewResume={onViewResume}
-                onViewProfile={onViewProfile}
-                onStatusUpdate={onStatusUpdate}
-                showLabels={true}
+          {/* Resume Section */}
+          <div>
+            <Title level={5} className="mb-3">
+              <FilePdfOutlined className="mr-2" /> Resume/CV
+            </Title>
+            {application.resume_url && onViewResume ? (
+              <Button
+                icon={<FilePdfOutlined />}
+                onClick={() => onViewResume(application.resume_url)}
+              >
+                View Resume
+              </Button>
+            ) : (
+              <Empty
+                description="No resume uploaded"
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
               />
-            </div>
-          )}
+            )}
+          </div>
         </div>
       )}
     </Modal>

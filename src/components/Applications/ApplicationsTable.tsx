@@ -1,26 +1,30 @@
 import React from "react";
-import { Table, Button, Tooltip, Empty, Avatar } from "antd";
+import { Table, Button, Tooltip, Empty, Avatar, Modal } from "antd";
 import {
   EyeOutlined,
-  FilePdfOutlined,
-  UserOutlined,
-  MailOutlined,
+  // UserOutlined, // Removed from table actions
   EnvironmentOutlined,
+  UserOutlined,
+  CheckOutlined,
+  CloseOutlined,
+  ExclamationCircleFilled,
+  MessageOutlined, // Added for Interview
 } from "@ant-design/icons";
 import { Application } from "../../types";
 import { ApplicationStatusBadge } from "./index";
+
+const { confirm } = Modal;
 
 interface ApplicationsTableProps {
   applications: Application[];
   loading: boolean;
   isAdmin: boolean;
   onViewDetails: (application: Application) => void;
-  onViewResume: (url: string) => void;
-  onViewProfile: (userId: string) => void;
-  onStatusUpdate?: (
-    id: number,
-    status: "pending" | "accepted" | "rejected" | "interviewing"
-  ) => void;
+  onViewResume: (url: string | null) => void; // Changed to allow null
+  onViewProfile: (userId: string) => void; // Keep for modal
+  onAccept: (id: number, applicantName: string) => void;
+  onReject: (id: number, applicantName: string) => void;
+  onInterview: (id: number, applicantName: string) => void; // Added prop
 }
 
 const ApplicationsTable: React.FC<ApplicationsTableProps> = ({
@@ -29,10 +33,31 @@ const ApplicationsTable: React.FC<ApplicationsTableProps> = ({
   isAdmin,
   onViewDetails,
   onViewResume,
-  onViewProfile,
+  onViewProfile, // Keep destructuring for modal
+  onAccept,
+  onReject,
+  onInterview, // Destructure new prop
 }) => {
+  // --- Confirmation Modals ---
+  const showConfirm = (
+    title: string,
+    content: string,
+    onOk: () => void,
+    okType: "primary" | "danger" = "primary" // Add okType parameter
+  ) => {
+    confirm({
+      title,
+      icon: <ExclamationCircleFilled />,
+      content,
+      okText: "Confirm",
+      okType: okType,
+      cancelText: "Cancel",
+      onOk,
+    });
+  };
+
   const columns = [
-    // Applicant Information (with avatar)
+    // Applicant Info (No change)
     {
       title: "Applicant",
       dataIndex: "profile",
@@ -42,7 +67,7 @@ const ApplicationsTable: React.FC<ApplicationsTableProps> = ({
           {isAdmin && (
             <Avatar
               src={record.profile?.avatar_url}
-              icon={<UserOutlined />}
+              icon={<UserOutlined />} // Keep UserOutlined for Avatar fallback
               className="flex-shrink-0"
             />
           )}
@@ -59,8 +84,7 @@ const ApplicationsTable: React.FC<ApplicationsTableProps> = ({
         </div>
       ),
     },
-
-    // Job Information - FIXED MISSING IMPLEMENTATION
+    // Job Info (No change)
     {
       title: "Job Position",
       dataIndex: "job",
@@ -76,10 +100,9 @@ const ApplicationsTable: React.FC<ApplicationsTableProps> = ({
           </span>
         </div>
       ),
-      responsive: ["sm"],
+      responsive: ["sm" as const],
     },
-
-    // Application Date - FIXED MISSING IMPLEMENTATION
+    // Date Applied (No change)
     {
       title: "Date Applied",
       dataIndex: "applied_at",
@@ -90,10 +113,9 @@ const ApplicationsTable: React.FC<ApplicationsTableProps> = ({
         </span>
       ),
       width: 110,
-      responsive: ["md"],
+      responsive: ["md" as const],
     },
-
-    // Status
+    // Status (No change)
     {
       title: "Status",
       dataIndex: "status",
@@ -101,58 +123,98 @@ const ApplicationsTable: React.FC<ApplicationsTableProps> = ({
       render: (status: string) => <ApplicationStatusBadge status={status} />,
       width: 120,
     },
-
-    // Actions - FIXED MISSING IMPLEMENTATION
+    // --- MODIFIED Actions Column ---
     {
       title: "Actions",
       key: "actions",
-      width: 140,
-      render: (_, record: Application) => (
-        <div className="flex flex-wrap gap-2">
-          <Tooltip title="View Details">
-            <Button
-              onClick={(e) => {
-                e.stopPropagation();
-                onViewDetails(record);
-              }}
-              type="text"
-              icon={<EyeOutlined />}
-              size="small"
-              aria-label="View details"
-            />
-          </Tooltip>
-
-          {record.resume_url && (
-            <Tooltip title="View Resume">
+      width: isAdmin ? 150 : 80, // Adjusted width
+      fixed: "right" as const,
+      render: (_, record: Application) => {
+        const applicantName = record.profile?.full_name || "this applicant";
+        return (
+          <div className="flex flex-wrap gap-x-2 gap-y-1 items-center">
+            {/* View Details Button */}
+            <Tooltip title="View Details">
               <Button
                 onClick={(e) => {
                   e.stopPropagation();
-                  onViewResume(record.resume_url as string);
+                  onViewDetails(record); // Call handler to open modal
                 }}
                 type="text"
-                icon={<FilePdfOutlined />}
+                icon={<EyeOutlined />}
                 size="small"
-                aria-label="View resume"
+                aria-label="View details"
               />
             </Tooltip>
-          )}
 
-          {isAdmin && (
-            <Tooltip title="View Profile">
-              <Button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onViewProfile(record.user_id);
-                }}
-                type="text"
-                icon={<MailOutlined />}
-                size="small"
-                aria-label="View profile"
-              />
-            </Tooltip>
-          )}
-        </div>
-      ),
+            {/* View Profile Button REMOVED from here */}
+
+            {/* Accept Button (Admin Only) */}
+            {isAdmin && record.status !== "accepted" && (
+              <Tooltip title="Accept Application">
+                <Button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    showConfirm(
+                      `Accept ${applicantName}?`,
+                      "This will mark the application as accepted.",
+                      () => onAccept(record.id, applicantName)
+                    );
+                  }}
+                  type="text"
+                  icon={<CheckOutlined style={{ color: "#52c41a" }} />} // Green check
+                  size="small"
+                  aria-label="Accept application"
+                />
+              </Tooltip>
+            )}
+
+            {/* Reject Button (Admin Only) */}
+            {isAdmin && record.status !== "rejected" && (
+              <Tooltip title="Reject Application">
+                <Button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    showConfirm(
+                      `Reject ${applicantName}?`,
+                      "This will mark the application as rejected.",
+                      () => onReject(record.id, applicantName),
+                      "danger" // Set okType to danger for reject confirmation
+                    );
+                  }}
+                  type="text"
+                  icon={<CloseOutlined style={{ color: "#ff4d4f" }} />} // Red cross
+                  size="small"
+                  aria-label="Reject application"
+                  danger // Use danger style for reject button tooltip/focus
+                />
+              </Tooltip>
+            )}
+
+            {/* Interview Button (Admin Only) */}
+            {isAdmin &&
+              record.status !== "interviewing" &&
+              (record.status === "pending" || record.status === "accepted") && ( // Show for pending or accepted
+                <Tooltip title="Mark as Interviewing">
+                  <Button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      showConfirm(
+                        `Mark ${applicantName} as Interviewing?`,
+                        "This will update the application status.",
+                        () => onInterview(record.id, applicantName)
+                      );
+                    }}
+                    type="text"
+                    icon={<MessageOutlined style={{ color: "#1890ff" }} />} // Blue message icon
+                    size="small"
+                    aria-label="Mark as interviewing"
+                  />
+                </Tooltip>
+              )}
+          </div>
+        );
+      },
     },
   ];
 
@@ -181,10 +243,7 @@ const ApplicationsTable: React.FC<ApplicationsTableProps> = ({
             />
           ),
         }}
-        onRow={(record) => ({
-          onClick: () => onViewDetails(record),
-          style: { cursor: "pointer" },
-        })}
+        // --- REMOVED onRow click handler ---
       />
     </div>
   );

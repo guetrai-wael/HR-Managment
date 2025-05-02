@@ -51,7 +51,7 @@ export interface Job {
   /** Key duties and tasks the employee will perform. */
   responsibilities: string;
   /** The current status of the job posting (e.g., "Open", "Closed", "Draft"). */
-  status: string; // Consider using a union type like 'Open' | 'Closed' | 'Draft' if statuses are fixed
+  status: "Open" | "Closed"; // Consider using a union type like 'Open' | 'Closed' | 'Draft' if statuses are fixed
   /** The application deadline date (ISO string format or null if no deadline). */
   deadline: string | null;
   /** The physical location or remote status of the job. */

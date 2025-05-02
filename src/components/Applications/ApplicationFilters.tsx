@@ -3,20 +3,12 @@ import { Form, Input, Select, DatePicker, Button, Drawer } from "antd";
 import { FilterOutlined, SearchOutlined } from "@ant-design/icons";
 import { fetchJobs } from "../../services/api/jobService";
 import { fetchDepartments } from "../../services/api/departmentService";
-
-import { Job } from "../../types";
+import { Job, FilterValues } from "../../types";
 import { Department } from "../../types/models";
+import dayjs from "dayjs";
 
 const { Option } = Select;
 const { RangePicker } = DatePicker;
-
-interface FilterValues {
-  jobId?: number;
-  departmentId?: string; // Keep as string if API expects string ID
-  status?: string;
-  dateRange?: [string, string]; // Assuming date strings are expected
-  search?: string;
-}
 
 interface ApplicationFiltersProps {
   isAdmin: boolean;
@@ -32,16 +24,16 @@ const ApplicationFilters: React.FC<ApplicationFiltersProps> = ({
   const [form] = Form.useForm<FilterValues>();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
-  const [drawerVisible, setDrawerVisible] = useState(false);
+  const [drawerVisible, setDrawerVisible] = useState(false); // Mobile drawer visibility
 
+  // Fetch options for select dropdowns on mount and when admin status changes
   useEffect(() => {
-    // Fetch jobs and departments for dropdowns
     const fetchData = async () => {
       try {
-        const fetchedJobsResult = await fetchJobs(); // Pass filters if needed, e.g. fetchJobs({})
+        const fetchedJobsResult = await fetchJobs();
         setJobs(fetchedJobsResult || []);
-
         if (isAdmin) {
+          // Only fetch departments if user is admin
           const fetchedDepartments = await fetchDepartments();
           setDepartments(fetchedDepartments || []);
         }
@@ -52,55 +44,128 @@ const ApplicationFilters: React.FC<ApplicationFiltersProps> = ({
     fetchData();
   }, [isAdmin]);
 
-  // Debounced filter change handler
+  // Prepare initial form values, converting date strings to Dayjs for RangePicker
+  const initialFormValues = {
+    ...defaultValues,
+    dateRange: defaultValues.dateRange
+      ? [
+          defaultValues.dateRange[0] ? dayjs(defaultValues.dateRange[0]) : null,
+          defaultValues.dateRange[1] ? dayjs(defaultValues.dateRange[1]) : null,
+        ]
+      : undefined,
+  };
+
+  // Sync form state if defaultValues change externally (e.g., parent clears filters)
+  useEffect(() => {
+    if (Object.keys(defaultValues).length === 0) {
+      form.resetFields(); // Reset if parent cleared filters
+    } else {
+      form.setFieldsValue(initialFormValues); // Update form if parent provided new filters
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaultValues, form]);
+
+  /**
+   * Processes form changes, cleans data, converts dates, and notifies parent.
+   * @param _changedValues - Specific fields that changed (unused).
+   * @param allValues - All current form values (includes Dayjs objects).
+   */
   const handleValuesChange = (
     _changedValues: Partial<FilterValues>,
     allValues: FilterValues
   ) => {
-    // Convert date range if present
-    const filtersToApply = { ...allValues };
-    if (allValues.dateRange && allValues.dateRange.length === 2) {
-      filtersToApply.dateRange = [
-        allValues.dateRange[0].toString(), // Ensure dates are strings if needed by API
-        allValues.dateRange[1].toString(),
+    // 1. Copy values to work with
+    const cleanedFilters: Partial<FilterValues> = { ...allValues };
+
+    // 2. Remove empty/null values before sending to parent
+    Object.keys(cleanedFilters).forEach((key) => {
+      const filterKey = key as keyof FilterValues;
+      if (
+        cleanedFilters[filterKey] === undefined ||
+        cleanedFilters[filterKey] === null ||
+        cleanedFilters[filterKey] === "" ||
+        // Check if dateRange array is effectively empty ([null, null])
+        (filterKey === "dateRange" &&
+          Array.isArray(cleanedFilters[filterKey]) &&
+          (cleanedFilters[filterKey] as (dayjs.Dayjs | null)[]).every(
+            (item) => item === null
+          ))
+      ) {
+        delete cleanedFilters[filterKey];
+      }
+    });
+
+    // 3. Prepare the object for the parent callback
+    const filtersForParent: Partial<FilterValues> = { ...cleanedFilters };
+
+    // 4. Convert Dayjs date range back to ISO strings for parent component
+    if (
+      filtersForParent.dateRange &&
+      Array.isArray(filtersForParent.dateRange)
+    ) {
+      const dateRangeAsDayjs = filtersForParent.dateRange as [
+        dayjs.Dayjs | null,
+        dayjs.Dayjs | null
       ];
-    } else {
-      // Ensure dateRange is removed if cleared
-      delete filtersToApply.dateRange;
+      filtersForParent.dateRange = [
+        dateRangeAsDayjs[0] ? dateRangeAsDayjs[0].toISOString() : null,
+        dateRangeAsDayjs[1] ? dateRangeAsDayjs[1].toISOString() : null,
+      ] as any; // Type assertion needed here or adjust FilterValues
     }
 
-    // Remove empty search string
-    if (filtersToApply.search === "") {
-      delete filtersToApply.search;
-    }
-
-    console.log("Applying filters:", filtersToApply);
-    onFilterChange(filtersToApply);
+    // 5. Trigger parent callback
+    onFilterChange(filtersForParent);
   };
 
+  // Drawer visibility handlers
   const showDrawer = () => setDrawerVisible(true);
   const closeDrawer = () => setDrawerVisible(false);
 
-  const filterFormContent = (
+  // Clears form fields visually and notifies parent
+  const clearFilters = () => {
+    form.setFieldsValue({
+      // Use setFieldsValue for immediate UI update
+      search: undefined,
+      jobId: undefined,
+      departmentId: undefined,
+      status: undefined,
+      dateRange: undefined,
+    });
+    onFilterChange({}); // Send empty object to parent
+  };
+
+  /**
+   * Renders the Form UI, adapting layout based on isInline flag.
+   * @param isInline - True for desktop inline layout, false for mobile vertical layout.
+   */
+  const filterFormContent = (isInline: boolean) => (
     <Form
       form={form}
-      layout="vertical"
-      onValuesChange={handleValuesChange}
-      initialValues={defaultValues}
-      className="space-y-4"
+      layout={isInline ? "inline" : "vertical"} // Dynamic layout
+      onValuesChange={handleValuesChange} // Apply filters on any change
+      initialValues={initialFormValues} // Set initial state
+      className={
+        // Apply layout-specific styling
+        isInline ? "flex flex-wrap gap-x-4 gap-y-2 items-center" : "space-y-4"
+      }
     >
-      {/* Search input */}
-      <Form.Item name="search" label="Search Applicant/Job">
+      {/* Search Input */}
+      <Form.Item name="search" label={isInline ? null : "Search Applicant/Job"}>
         <Input
-          placeholder="Search by name, email, or job title"
+          placeholder="Search name, email, job..."
           prefix={<SearchOutlined />}
           allowClear
+          style={{ minWidth: isInline ? "200px" : "100%" }}
         />
       </Form.Item>
 
-      {/* Job filter */}
-      <Form.Item name="jobId" label="Job Position">
-        <Select placeholder="All Positions" allowClear>
+      {/* Job Filter */}
+      <Form.Item name="jobId" label={isInline ? null : "Job Position"}>
+        <Select
+          placeholder="All Positions"
+          allowClear
+          style={{ minWidth: isInline ? "180px" : "100%" }}
+        >
           {jobs.map((job) => (
             <Option key={job.id} value={job.id}>
               {job.title}
@@ -109,10 +174,14 @@ const ApplicationFilters: React.FC<ApplicationFiltersProps> = ({
         </Select>
       </Form.Item>
 
-      {/* Department filter - only for admins */}
+      {/* Department Filter (Admin Only) */}
       {isAdmin && (
-        <Form.Item name="departmentId" label="Department">
-          <Select placeholder="All Departments" allowClear>
+        <Form.Item name="departmentId" label={isInline ? null : "Department"}>
+          <Select
+            placeholder="All Departments"
+            allowClear
+            style={{ minWidth: isInline ? "180px" : "100%" }}
+          >
             {departments.map((dept) => (
               <Option key={dept.id} value={dept.id}>
                 {dept.name}
@@ -122,9 +191,13 @@ const ApplicationFilters: React.FC<ApplicationFiltersProps> = ({
         </Form.Item>
       )}
 
-      {/* Status filter - available for all users */}
-      <Form.Item name="status" label="Status">
-        <Select placeholder="All Statuses" allowClear>
+      {/* Status Filter */}
+      <Form.Item name="status" label={isInline ? null : "Status"}>
+        <Select
+          placeholder="All Statuses"
+          allowClear
+          style={{ minWidth: isInline ? "150px" : "100%" }}
+        >
           <Option value="pending">Pending</Option>
           <Option value="accepted">Accepted</Option>
           <Option value="rejected">Rejected</Option>
@@ -132,40 +205,61 @@ const ApplicationFilters: React.FC<ApplicationFiltersProps> = ({
         </Select>
       </Form.Item>
 
-      {/* Date range filter */}
-      <Form.Item name="dateRange" label="Date Range">
-        <RangePicker style={{ width: "100%" }} />
+      {/* Date Range Filter */}
+      <Form.Item name="dateRange" label={isInline ? null : "Date Range"}>
+        <RangePicker style={{ width: isInline ? "auto" : "100%" }} />
       </Form.Item>
+
+      {/* Clear Button (Desktop Only) */}
+      {isInline && (
+        <Form.Item>
+          <Button onClick={clearFilters}>Clear</Button>
+        </Form.Item>
+      )}
     </Form>
   );
 
   return (
     <>
-      {/* Desktop Filters */}
+      {/* Desktop: Inline filters, hidden on mobile */}
       <div className="hidden md:block bg-white p-4 rounded-lg shadow-sm mb-6 border border-gray-200">
-        <h3 className="text-lg font-semibold mb-4 text-gray-700">Filters</h3>
-        {filterFormContent}
+        {filterFormContent(true)}
       </div>
 
-      {/* Mobile Filter Button */}
+      {/* Mobile: Filter button to open drawer, hidden on desktop */}
       <div className="md:hidden mb-4 flex justify-end">
         <Button icon={<FilterOutlined />} onClick={showDrawer}>
           Filters
         </Button>
       </div>
 
-      {/* Mobile Filter Drawer */}
+      {/* Mobile: Drawer containing vertical filters */}
       <Drawer
         title="Filters"
         placement="right"
         onClose={closeDrawer}
         open={drawerVisible}
         width={300}
+        footer={
+          // Standard drawer footer actions
+          <div style={{ textAlign: "right" }}>
+            <Button
+              onClick={() => {
+                clearFilters();
+                closeDrawer();
+              }}
+              style={{ marginRight: 8 }}
+            >
+              Clear
+            </Button>
+            {/* Apply button just closes drawer as filters apply on change */}
+            <Button type="primary" onClick={closeDrawer}>
+              Apply Filters
+            </Button>
+          </div>
+        }
       >
-        {filterFormContent}
-        <Button type="primary" onClick={closeDrawer} className="mt-4 w-full">
-          Apply Filters
-        </Button>
+        {filterFormContent(false)}
       </Drawer>
     </>
   );

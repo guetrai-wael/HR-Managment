@@ -23,7 +23,7 @@ export const useAuth = () => {
       });
 
       if (error) {
-        message.error(error.message);
+        message.error((error as { message: string }).message);
         return null;
       }
 
@@ -97,7 +97,7 @@ export const useAuth = () => {
       return data;
     } catch (error) {
       setLoading(false);
-      message.error(error.message);
+      message.error((error as { message: string }).message);
       throw error;
     }
   };
@@ -144,27 +144,11 @@ export const useAuth = () => {
     navigate("/login");
     return true;
   };
-
-  /**
-   * Get the current session
-   */
-  const getSession = async () => {
-    const { data, error } = await supabase.auth.getSession();
-
-    if (error) {
-      console.error("Session error:", error);
-      return null;
-    }
-
-    return data.session;
-  };
-
   return {
     login,
     register,
     loginWithGoogle,
     logout,
-    getSession,
     loading,
   };
 };

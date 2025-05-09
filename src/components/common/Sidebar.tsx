@@ -17,7 +17,7 @@ import Logo from "../../assets/icons/Logo.svg";
 
 const Sidebar: React.FC = () => {
   const { user } = useUser();
-  const { isAdmin } = useRole();
+  const { isAdmin, isEmployee, isJobSeeker } = useRole(); // Add isJobSeeker
   const location = useLocation();
   const { logout } = useAuth();
   const isActive = useCallback(
@@ -25,29 +25,50 @@ const Sidebar: React.FC = () => {
     [location]
   );
 
-  const navItems = useMemo(
-    () => [
+  // Create appropriate navigation items based on user role
+  const navItems = useMemo(() => {
+    const items = [
       { icon: <IconHome stroke={1.5} />, text: "Home", path: "/home" },
-      {
-        icon: <IconClipboardText stroke={1.5} />,
-        text: "Applications", // Changed from "Registrations" to be more clear
-        path: "/applications",
-      },
-      { icon: <IconUserShare stroke={1.5} />, text: "Leaves", path: "/leaves" },
-      {
-        icon: <IconUsersPlus stroke={1.5} />,
-        text: "Employee",
-        path: "/employee",
-      },
+      // Show Applications to all authenticated users (including job seekers)
+      ...(isAdmin || isEmployee || isJobSeeker // Add isJobSeeker here
+        ? [
+            {
+              icon: <IconClipboardText stroke={1.5} />,
+              text: "Applications",
+              path: "/applications",
+            },
+          ]
+        : []),
+      // Only show employee management for admins
+      ...(isAdmin
+        ? [
+            {
+              icon: <IconUsersPlus stroke={1.5} />,
+              text: "Employee",
+              path: "/employee",
+            },
+          ]
+        : []),
+      // Jobs is visible to all
       { icon: <IconBriefcase stroke={1.5} />, text: "Jobs", path: "/" },
-      {
-        icon: <IconVideo stroke={1.5} />,
-        text: "Recordings",
-        path: "/recordings",
-      },
-    ],
-    []
-  );
+      // Other menu items based on role
+      ...(isAdmin || isEmployee
+        ? [
+            {
+              icon: <IconUserShare stroke={1.5} />,
+              text: "Leaves",
+              path: "/leaves",
+            },
+            {
+              icon: <IconVideo stroke={1.5} />,
+              text: "Recordings",
+              path: "/recordings",
+            },
+          ]
+        : []),
+    ];
+    return items;
+  }, [isAdmin, isEmployee, isJobSeeker]);
 
   return (
     <div className="flex flex-col justify-between w-[242px] h-screen sticky top-0">
@@ -95,7 +116,7 @@ const Sidebar: React.FC = () => {
         </div>
       </div>
 
-      {/* Footer Section */}
+      {/* Footer Section - No changes to Settings link */}
       <div className="flex flex-col items-start pb-8 px-2 gap-6 mt-auto">
         {/* Settings Navigation Link */}
         <div className="flex flex-col items-start w-full">
@@ -131,10 +152,10 @@ const Sidebar: React.FC = () => {
         {/* Divider */}
         <div className="h-[1px] w-full bg-[#EAECF0]"></div>
 
-        {/* Account */}
+        {/* Account - Update to show job seeker role */}
         <div className="flex flex-row justify-between items-center px-2 w-full">
           <div className="flex flex-row items-center gap-3">
-            {/* Avatar */}
+            {/* Avatar - No changes */}
             <div className="w-[40px] h-[40px] rounded-full bg-gray-300 overflow-hidden">
               {user?.user_metadata?.avatar_url ? (
                 <img
@@ -153,18 +174,18 @@ const Sidebar: React.FC = () => {
               )}
             </div>
 
-            {/* User Info */}
+            {/* User Info - Update role display */}
             <div className="flex flex-col">
               <span className="text-sm font-medium text-[#101828]">
                 {user?.email?.split("@")[0] || "User"}
               </span>
               <span className="text-sm text-[#667085]">
-                {isAdmin ? "Admin" : "Employee"}
+                {isAdmin ? "Admin" : isEmployee ? "Employee" : "Job Seeker"}
               </span>
             </div>
           </div>
 
-          {/* Logout Button */}
+          {/* Logout Button - No changes */}
           <button
             onClick={() => logout()}
             className="w-[36px] h-[36px] flex items-center justify-center rounded-md hover:bg-gray-100"

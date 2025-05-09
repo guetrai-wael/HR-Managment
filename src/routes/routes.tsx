@@ -1,7 +1,13 @@
 import { Fragment, lazy, Suspense } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { IRouteItem } from "../types";
-import { AuthGuard, GuestGuard } from "../guards";
+import {
+  AuthGuard,
+  GuestGuard,
+  AdminGuard,
+  EmployeeGuard,
+  PublicGuard,
+} from "../guards";
 import MainLayout from "../components/Layouts/MainLayout";
 import { Spin } from "antd";
 
@@ -29,17 +35,16 @@ export const routes: IRouteItem[] = [
     element: <Signup />,
     guard: GuestGuard,
   },
-
   {
     path: "/",
     element: <Jobs />,
-    guard: AuthGuard,
+    guard: PublicGuard,
     layout: MainLayout,
   },
   {
     path: "/jobs/:id",
     element: <JobDetails />,
-    guard: AuthGuard,
+    guard: PublicGuard,
     layout: MainLayout,
   },
   {
@@ -50,7 +55,7 @@ export const routes: IRouteItem[] = [
   },
   {
     path: "*",
-    element: <Navigate to="/login" />,
+    element: <Navigate to="/" />,
   },
 ];
 

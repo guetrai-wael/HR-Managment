@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Drawer } from "antd";
 import { MenuOutlined } from "@ant-design/icons";
 import { Link, useLocation } from "react-router-dom";
@@ -18,7 +18,7 @@ import {
 
 const MobileMenu: React.FC = () => {
   const { user } = useUser();
-  const { isAdmin } = useRole();
+  const { isAdmin, isEmployee, isJobSeeker } = useRole(); // Add isJobSeeker
   const [open, setOpen] = useState(false);
   const location = useLocation();
   const { logout } = useAuth();
@@ -37,7 +37,7 @@ const MobileMenu: React.FC = () => {
     const path = location.pathname;
     if (path === "/") return "Jobs";
     if (path === "/home") return "Home";
-    if (path === "/registrations")
+    if (path === "/applications")
       return isAdmin ? "Applications Management" : "My Applications";
     if (path === "/leaves") return "Leaves";
     if (path === "/employee") return "Employee";
@@ -50,35 +50,60 @@ const MobileMenu: React.FC = () => {
     return "Dashboard";
   };
 
-  const navItems = [
-    { icon: <IconHome stroke={1.5} />, text: "Home", path: "/home" },
-    {
-      icon: <IconClipboardText stroke={1.5} />,
-      text: "Applications",
-      path: "/registrations",
-    },
-    { icon: <IconUserShare stroke={1.5} />, text: "Leaves", path: "/leaves" },
-    {
-      icon: <IconUsersPlus stroke={1.5} />,
-      text: "Employee",
-      path: "/employee",
-    },
-    { icon: <IconBriefcase stroke={1.5} />, text: "Jobs", path: "/" },
-    {
-      icon: <IconVideo stroke={1.5} />,
-      text: "Recordings",
-      path: "/recordings",
-    },
-    {
-      icon: <IconSettings stroke={1.5} />,
-      text: "Settings",
-      path: "/settings",
-    },
-  ];
+  // Create navigation items based on role
+  const navItems = useMemo(() => {
+    const items = [
+      { icon: <IconHome stroke={1.5} />, text: "Home", path: "/home" },
+      // Show Applications to all authenticated users (including job seekers)
+      ...(isAdmin || isEmployee || isJobSeeker // Add isJobSeeker here
+        ? [
+            {
+              icon: <IconClipboardText stroke={1.5} />,
+              text: "Applications",
+              path: "/applications",
+            },
+          ]
+        : []),
+      // Only show employee management for admins
+      ...(isAdmin
+        ? [
+            {
+              icon: <IconUsersPlus stroke={1.5} />,
+              text: "Employee",
+              path: "/employee",
+            },
+          ]
+        : []),
+      // Jobs is visible to all
+      { icon: <IconBriefcase stroke={1.5} />, text: "Jobs", path: "/" },
+      // Other menu items based on role
+      ...(isAdmin || isEmployee
+        ? [
+            {
+              icon: <IconUserShare stroke={1.5} />,
+              text: "Leaves",
+              path: "/leaves",
+            },
+            {
+              icon: <IconVideo stroke={1.5} />,
+              text: "Recordings",
+              path: "/recordings",
+            },
+          ]
+        : []),
+      // Settings is available to all users
+      {
+        icon: <IconSettings stroke={1.5} />,
+        text: "Settings",
+        path: "/settings",
+      },
+    ];
+    return items;
+  }, [isAdmin, isEmployee, isJobSeeker]);
 
   return (
     <>
-      {/* Mobile header bar */}
+      {/* Mobile header bar - No changes */}
       <div className="fixed top-0 left-0 right-0 z-40 md:hidden bg-white flex items-center h-16 px-4 shadow-sm">
         <button
           onClick={showDrawer}
@@ -138,7 +163,7 @@ const MobileMenu: React.FC = () => {
             </div>
           </div>
 
-          {/* User Profile */}
+          {/* User Profile - Update to show job seeker role */}
           <div className="border-t border-gray-200 mt-4 pt-4 px-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -159,13 +184,13 @@ const MobileMenu: React.FC = () => {
                     />
                   )}
                 </div>
-                {/* User Info */}
+                {/* User Info - Update role display */}
                 <div className="flex flex-col">
                   <span className="text-sm font-medium text-[#101828]">
                     {user?.email?.split("@")[0] || "User"}
                   </span>
                   <span className="text-sm text-[#667085]">
-                    {isAdmin ? "Admin" : "Employee"}
+                    {isAdmin ? "Admin" : isEmployee ? "Employee" : "Job Seeker"}
                   </span>
                 </div>
               </div>

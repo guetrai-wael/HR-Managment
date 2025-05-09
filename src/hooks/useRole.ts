@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react"; // <<< Import useRef
+import { useState, useEffect, useRef } from "react";
 import { useUser } from "./";
 import supabase from "../services/supabaseClient";
 
@@ -6,6 +6,7 @@ export const useRole = () => {
   const { user, session, loading: userLoading } = useUser();
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [isEmployee, setIsEmployee] = useState<boolean>(false);
+  const [isJobSeeker, setIsJobSeeker] = useState<boolean>(false); // Add new state for job seeker
   // This state tracks if the *role check itself* is in progress
   const [roleCheckLoading, setRoleCheckLoading] = useState<boolean>(true);
   // Ref to prevent running the check multiple times unnecessarily if dependencies change rapidly
@@ -54,21 +55,28 @@ export const useRole = () => {
                 error
               );
               setIsAdmin(false);
-              setIsEmployee(true); // Default to employee on error
+              setIsEmployee(false);
+              setIsJobSeeker(true); // Default to job seeker on error
             } else {
               const isAdminResult = data?.role_id === 1;
-              const isEmployeeResult = data?.role_id === 2 || data === null;
+              const isEmployeeResult = data?.role_id === 2;
+              const isJobSeekerResult = data?.role_id === 3 || data === null; // Assume role_id 3 is job_seeker or default for new users
+
               setIsAdmin(isAdminResult);
               setIsEmployee(isEmployeeResult);
+              setIsJobSeeker(isJobSeekerResult);
+
               console.log("useRole: checkUserRole - User role checked:", {
                 isAdmin: isAdminResult,
                 isEmployee: isEmployeeResult,
+                isJobSeeker: isJobSeekerResult,
               });
             }
           } catch (error) {
             console.error("useRole: checkUserRole - Unexpected error:", error);
             setIsAdmin(false);
-            setIsEmployee(true); // Default on unexpected error
+            setIsEmployee(false);
+            setIsJobSeeker(true); // Default on unexpected error
           } finally {
             console.log(
               "useRole: checkUserRole - Finished. Setting roleCheckLoading false."
@@ -95,6 +103,7 @@ export const useRole = () => {
       currentUserId.current = null;
       setIsAdmin(false);
       setIsEmployee(false);
+      setIsJobSeeker(false); // Reset job seeker role
       setRoleCheckLoading(false); // No check needed, so not loading
     }
   }, [user, userLoading, session]); // Dependencies remain the same
@@ -102,10 +111,8 @@ export const useRole = () => {
   // The hook reports loading if the user context is loading OR the role check is loading
   const combinedLoading = userLoading || roleCheckLoading;
 
-  // Log the state being returned
-  // console.log(`useRole Returning: isAdmin=${isAdmin}, isEmployee=${isEmployee}, loading=${combinedLoading} (userLoading=${userLoading}, roleCheckLoading=${roleCheckLoading})`);
-
-  return { isAdmin, isEmployee, loading: combinedLoading };
+  // Return the updated states including isJobSeeker
+  return { isAdmin, isEmployee, isJobSeeker, loading: combinedLoading };
 };
 
 export default useRole;

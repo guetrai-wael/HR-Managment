@@ -1,14 +1,15 @@
 import React, { ReactNode } from "react";
 import { Sidebar, MobileMenu } from "../common/index";
-import { Spin } from "antd";
+import { Spin, Button } from "antd";
 import { useUser } from "../../hooks";
+import { Link } from "react-router-dom";
 
 interface MainLayoutProps {
   children: ReactNode;
 }
 
 const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
-  const { loading } = useUser();
+  const { user, loading } = useUser();
 
   if (loading) {
     return (
@@ -17,6 +18,35 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       </div>
     );
   }
+  // For unauthenticated users, show a simplified header with login/signup buttons
+  if (!user) {
+    return (
+      <div className="flex flex-col min-h-screen bg-[#F9FAFB]">
+        {/* Public Header */}
+        <header className="bg-white shadow-sm h-16 flex items-center px-4 md:px-8">
+          <div className="flex-1">
+            <Link to="/" className="text-xl font-bold text-[#6941C6]">
+              Job Portal
+            </Link>
+          </div>
+          <div className="flex items-center gap-4">
+            <Link to="/login">
+              <Button type="default">Login</Button>
+            </Link>
+            <Link to="/signup">
+              <Button type="primary">Sign Up</Button>
+            </Link>
+          </div>
+        </header>
+
+        {/* Main Content */}
+        <main className="flex-1">
+          <div className="flex flex-col bg-white min-h-screen">{children}</div>
+        </main>
+      </div>
+    );
+  }
+  // For authenticated users, show the normal sidebar layout
   return (
     <div className="flex min-h-screen bg-[#F9FAFB]">
       {/* Sidebar for desktop */}

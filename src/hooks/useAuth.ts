@@ -50,46 +50,65 @@ export const useAuth = () => {
         password,
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Auth signup error:", error);
+        throw error;
+      }
 
-      // Step 2: Create profile as a fallback
+      // Step 2: If signup successful, manually create profile
+      // (this is normally handled by triggers but might be failing)
       if (data?.user) {
-        // Create profile
-        await supabase
-          .from("profiles")
-          .insert([
-            {
-              id: data.user.id,
-              email: data.user.email,
-              full_name: data.user.email?.split("@")[0] || "User",
-            },
-          ])
-          .then(({ error }) => {
-            if (error && !error.message.includes("duplicate")) {
-              console.error("Profile creation failed:", error);
+        console.log("User created successfully, adding profile and role");
+
+        try {
+          // Wait for auth to complete before attempting database operations
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+
+          // Get session to have proper auth context for database operations
+          const { data: sessionData } = await supabase.auth.getSession();
+
+          if (sessionData?.session) {
+            console.log("Got authenticated session");
+
+            // Create profile if needed
+            const { error: profileError } = await supabase
+              .from("profiles")
+              .upsert(
+                [
+                  {
+                    id: data.user.id,
+                    email: data.user.email,
+                    full_name: data.user.email?.split("@")[0] || "User",
+                  },
+                ],
+                { onConflict: "id" }
+              );
+
+            if (profileError) {
+              console.error("Profile creation error:", profileError);
             }
-          });
 
-        // Assign employee role
-        const { count } = await supabase
-          .from("user_roles")
-          .select("*", { count: "exact", head: true });
+            // Assign job_seeker role
+            const { error: roleError } = await supabase
+              .from("user_roles")
+              .upsert(
+                [
+                  {
+                    user_id: data.user.id,
+                    role_id: 3, // job_seeker role
+                  },
+                ],
+                { onConflict: "user_id" }
+              );
 
-        const roleId = count === 0 ? 1 : 2; // 1=admin for first user, 2=employee for others
-
-        await supabase
-          .from("user_roles")
-          .insert([
-            {
-              user_id: data.user.id,
-              role_id: roleId,
-            },
-          ])
-          .then(({ error }) => {
-            if (error) {
-              console.error("Role assignment failed:", error);
+            if (roleError) {
+              console.error("Role assignment error:", roleError);
             }
-          });
+          }
+        } catch (dbError) {
+          console.error("Database operations error:", dbError);
+          // Continue anyway - user was created in auth system
+        }
       }
 
       setLoading(false);
@@ -98,7 +117,7 @@ export const useAuth = () => {
     } catch (error) {
       setLoading(false);
       message.error((error as { message: string }).message);
-      throw error;
+      return null;
     }
   };
 

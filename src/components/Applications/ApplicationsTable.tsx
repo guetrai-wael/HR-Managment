@@ -2,13 +2,12 @@ import React from "react";
 import { Table, Button, Tooltip, Empty, Avatar, Modal } from "antd";
 import {
   EyeOutlined,
-  // UserOutlined, // Removed from table actions
   EnvironmentOutlined,
   UserOutlined,
   CheckOutlined,
   CloseOutlined,
   ExclamationCircleFilled,
-  MessageOutlined, // Added for Interview
+  MessageOutlined,
 } from "@ant-design/icons";
 import { Application } from "../../types";
 import { ApplicationStatusBadge } from "./index";
@@ -20,11 +19,11 @@ interface ApplicationsTableProps {
   loading: boolean;
   isAdmin: boolean;
   onViewDetails: (application: Application) => void;
-  onViewResume: (url: string | null) => void; // Changed to allow null
-  onViewProfile: (userId: string) => void; // Keep for modal
+  onViewResume: (url: string | null) => void;
+  onViewProfile: (userId: string) => void;
   onAccept: (id: number, applicantName: string) => void;
   onReject: (id: number, applicantName: string) => void;
-  onInterview: (id: number, applicantName: string) => void; // Added prop
+  onInterview: (id: number, applicantName: string) => void;
 }
 
 const ApplicationsTable: React.FC<ApplicationsTableProps> = ({
@@ -32,8 +31,6 @@ const ApplicationsTable: React.FC<ApplicationsTableProps> = ({
   loading,
   isAdmin,
   onViewDetails,
-  onViewResume,
-  onViewProfile, // Keep destructuring for modal
   onAccept,
   onReject,
   onInterview, // Destructure new prop
@@ -150,68 +147,70 @@ const ApplicationsTable: React.FC<ApplicationsTableProps> = ({
             {/* View Profile Button REMOVED from here */}
 
             {/* Accept Button (Admin Only) */}
-            {isAdmin && record.status !== "accepted" && (
-              <Tooltip title="Accept Application">
-                <Button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    showConfirm(
-                      `Accept ${applicantName}?`,
-                      "This will mark the application as accepted.",
-                      () => onAccept(record.id, applicantName)
-                    );
-                  }}
-                  type="text"
-                  icon={<CheckOutlined style={{ color: "#52c41a" }} />} // Green check
-                  size="small"
-                  aria-label="Accept application"
-                />
-              </Tooltip>
-            )}
-
-            {/* Reject Button (Admin Only) */}
-            {isAdmin && record.status !== "rejected" && (
-              <Tooltip title="Reject Application">
-                <Button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    showConfirm(
-                      `Reject ${applicantName}?`,
-                      "This will mark the application as rejected.",
-                      () => onReject(record.id, applicantName),
-                      "danger" // Set okType to danger for reject confirmation
-                    );
-                  }}
-                  type="text"
-                  icon={<CloseOutlined style={{ color: "#ff4d4f" }} />} // Red cross
-                  size="small"
-                  aria-label="Reject application"
-                  danger // Use danger style for reject button tooltip/focus
-                />
-              </Tooltip>
-            )}
-
-            {/* Interview Button (Admin Only) */}
             {isAdmin &&
-              record.status !== "interviewing" &&
-              (record.status === "pending" || record.status === "accepted") && ( // Show for pending or accepted
-                <Tooltip title="Mark as Interviewing">
+              (record.status === "pending" ||
+                record.status === "interviewing") && (
+                <Tooltip title="Accept Application">
                   <Button
                     onClick={(e) => {
                       e.stopPropagation();
                       showConfirm(
-                        `Mark ${applicantName} as Interviewing?`,
-                        "This will update the application status.",
-                        () => onInterview(record.id, applicantName)
+                        `Accept ${applicantName}?`,
+                        "This will mark the application as accepted.",
+                        () => onAccept(record.id, applicantName)
                       );
                     }}
                     type="text"
-                    icon={<MessageOutlined style={{ color: "#1890ff" }} />} // Blue message icon
+                    icon={<CheckOutlined style={{ color: "#52c41a" }} />} // Green check
                     size="small"
-                    aria-label="Mark as interviewing"
+                    aria-label="Accept application"
                   />
                 </Tooltip>
               )}
+
+            {/* Reject Button (Admin Only) */}
+            {isAdmin &&
+              (record.status === "pending" ||
+                record.status === "interviewing") && (
+                <Tooltip title="Reject Application">
+                  <Button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      showConfirm(
+                        `Reject ${applicantName}?`,
+                        "This will mark the application as rejected.",
+                        () => onReject(record.id, applicantName),
+                        "danger" // Set okType to danger for reject confirmation
+                      );
+                    }}
+                    type="text"
+                    icon={<CloseOutlined style={{ color: "#ff4d4f" }} />} // Red cross
+                    size="small"
+                    aria-label="Reject application"
+                    danger // Use danger style for reject button tooltip/focus
+                  />
+                </Tooltip>
+              )}
+
+            {/* Interview Button (Admin Only) */}
+            {isAdmin && record.status === "pending" && (
+              <Tooltip title="Mark as Interviewing">
+                <Button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    showConfirm(
+                      `Mark ${applicantName} as Interviewing?`,
+                      "This will update the application status.",
+                      () => onInterview(record.id, applicantName)
+                    );
+                  }}
+                  type="text"
+                  icon={<MessageOutlined style={{ color: "#1890ff" }} />} // Blue message icon
+                  size="small"
+                  aria-label="Mark as interviewing"
+                />
+              </Tooltip>
+            )}
           </div>
         );
       },

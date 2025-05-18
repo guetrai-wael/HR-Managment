@@ -69,8 +69,8 @@ const MobileMenu: React.FC = () => {
         ? [
             {
               icon: <IconUsersPlus stroke={1.5} />,
-              text: "Employee",
-              path: "/employee",
+              text: "Employees",
+              path: "/employees",
             },
           ]
         : []),

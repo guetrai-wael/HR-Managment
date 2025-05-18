@@ -10,10 +10,4 @@ const supabase = createClient(supabaseUrl, supabaseKey, {
     storage: localStorage,
   },
 });
-
-console.log("Supabase URL:", supabaseUrl ? "Set" : "Missing");
-console.log(
-  "Supabase Key:",
-  supabaseKey ? "Set (first 5 chars):" + supabaseKey.substring(0, 5) : "Missing"
-);
 export default supabase;

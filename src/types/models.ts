@@ -26,14 +26,30 @@ export interface Department {
 export interface UserProfile {
   /** The unique identifier for the user (usually UUID from Supabase Auth). */
   id: string;
-  /** The user's full name. */
-  full_name: string | null;
+  /** The user's first name. */
+  first_name: string | null;
+  /** The user's last name. */
+  last_name: string | null;
   /** The user's email address (used for login and communication). */
   email: string;
   /** URL pointing to the user's avatar image (optional). */
   avatar_url?: string | null;
   /** The user's phone number (optional). */
   phone?: string | null;
+
+  // Fields for employee-specific data / extended profile information
+  /** The user's job title or position (if an employee). */
+  position?: string | null;
+  /** The ID of the department this user belongs to (Foreign Key to departments table, if an employee). */
+  department_id?: number | null;
+  /** The date the user was hired (if an employee). */
+  hiring_date?: string | null; // Store as ISO string (e.g., "YYYY-MM-DD")
+  /** The user's physical address (if provided). */
+  physical_address?: string | null;
+  /** A short biography of the user (if provided). */
+  bio?: string | null;
+  /** The current employment status of the user (e.g., "Active", "Terminated", if an employee). */
+  employment_status?: string | null;
 }
 
 /**
@@ -65,7 +81,7 @@ export interface Job {
   /** The ID of the department this job belongs to (Foreign Key to Department, optional). */
   department_id: number | null; // Make 'number' if required in DB
   /** The associated Department object (populated via joins/relations). */
-  department?: Department | null; // Optional, based on query
+  department?: Department | null; // Added to reflect joined data
 }
 
 /**

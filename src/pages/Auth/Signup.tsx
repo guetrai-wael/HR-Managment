@@ -5,16 +5,19 @@ import SignupBackground from "../../assets/img/sign up.png";
 import { ILoginData } from "../../types";
 import { useNavigate } from "react-router-dom";
 import { message } from "antd";
-import { useAuth, useFormSubmission } from "../../hooks";
+import { useAuth } from "../../hooks";
 
 const Signup: FC = () => {
   const navigate = useNavigate();
   const { register, getSession } = useAuth();
 
   const SignupSchema = Yup.object().shape({
-    name: Yup.string()
-      .required("Name is required")
-      .min(2, "Name must be at least 2 characters"),
+    firstName: Yup.string()
+      .required("First Name is required")
+      .min(2, "First Name must be at least 2 characters"),
+    lastName: Yup.string()
+      .required("Last Name is required")
+      .min(2, "Last Name must be at least 2 characters"),
     email: Yup.string()
       .matches(
         /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
@@ -26,13 +29,17 @@ const Signup: FC = () => {
       .required("Password is required"),
   });
 
-  const { handleSubmit } = useFormSubmission(async (data: ILoginData) => {
-    const { email, password } = data;
-    const session = await register(email, password);
-    if (session) {
-      navigate("/");
+  const handleRegistrationSubmit = async (values: ILoginData) => {
+    const { email, password, firstName, lastName } = values;
+    if (email && password && firstName && lastName) {
+      const result = await register(email, password, firstName, lastName);
+      if (result) {
+        navigate("/");
+      }
+    } else {
+      message.error("All fields are required for signup.");
     }
-  });
+  };
 
   const handleGoogleSuccess = async () => {
     try {
@@ -43,6 +50,7 @@ const Signup: FC = () => {
       }
     } catch (error) {
       console.error("Error handling Google signup success:", error);
+      message.error("Failed to complete Google sign-up process.");
     }
   };
 
@@ -56,23 +64,29 @@ const Signup: FC = () => {
       subtitle="Create your account"
       actionLinkText="Already have an account? "
       actionLinkLabel=" Login"
-      actionLinkTo="/"
+      actionLinkTo="/login"
       backgroundImage={SignupBackground}
       infoHeading="Streamline Your HR Experience"
       infoText="Manage your leave requests, job applications, and attendance with ease. Join our system and stay connected with your workplace."
     >
       <AuthForm
-        onSubmit={handleSubmit}
+        onSubmit={handleRegistrationSubmit}
         schema={SignupSchema}
         submitText="Create account"
         onGoogleSuccess={handleGoogleSuccess}
         onGoogleError={handleGoogleError}
         fields={[
           {
-            name: "name",
-            label: "Full Name",
+            name: "firstName",
+            label: "First Name",
             type: "text",
-            placeholder: "Enter your full name",
+            placeholder: "Enter your first name",
+          },
+          {
+            name: "lastName",
+            label: "Last Name",
+            type: "text",
+            placeholder: "Enter your last name",
           },
           {
             name: "email",

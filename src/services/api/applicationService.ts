@@ -37,7 +37,7 @@ export const fetchApplications = async (
           department_id,
           department:departments (id, name)
         ),
-        profile:profiles(id, full_name, email)
+        profile:profiles(id, first_name, last_name, email)
       `
       )
       .order("applied_at", { ascending: false });
@@ -92,7 +92,7 @@ export const fetchApplications = async (
       if (filters.search) {
         const searchTerm = `%${filters.search}%`;
         query = query.or(
-          `profile.full_name.ilike.${searchTerm},profile.email.ilike.${searchTerm},job.title.ilike.${searchTerm}`
+          `profile.first_name.ilike.${searchTerm},profile.last_name.ilike.${searchTerm},profile.email.ilike.${searchTerm},job.title.ilike.${searchTerm}`
         );
       }
     }
@@ -137,7 +137,7 @@ export const getApplicationById = async (
           id, title, description, requirements, responsibilities, location, salary, deadline, status, 
           department:departments (id, name) 
       ),
-      profile:profiles(id, full_name, email) 
+      profile:profiles(id, first_name, last_name, email) 
     `
       )
       .eq("id", id)
@@ -226,8 +226,10 @@ export const searchProfiles = async (
   try {
     const { data, error } = await supabase
       .from("profiles")
-      .select("id, full_name, email")
-      .or(`full_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`)
+      .select("id, first_name, last_name, email")
+      .or(
+        `first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`
+      )
       .limit(10);
 
     if (error) throw error;

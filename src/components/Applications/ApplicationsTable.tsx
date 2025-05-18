@@ -59,7 +59,7 @@ const ApplicationsTable: React.FC<ApplicationsTableProps> = ({
       title: "Applicant",
       dataIndex: "profile",
       key: "applicant",
-      render: (_, record: Application) => (
+      render: (_value: unknown, record: Application) => (
         <div className="flex items-center space-x-3">
           {isAdmin && (
             <Avatar
@@ -70,7 +70,11 @@ const ApplicationsTable: React.FC<ApplicationsTableProps> = ({
           )}
           <div className="flex flex-col overflow-hidden">
             <span className="font-medium truncate max-w-[180px]">
-              {record.profile?.full_name || "Unknown User"}
+              {record.profile?.first_name && record.profile?.last_name
+                ? `${record.profile.first_name} ${record.profile.last_name}`
+                : record.profile?.first_name ||
+                  record.profile?.last_name ||
+                  "Unknown User"}
             </span>
             {isAdmin && (
               <span className="text-xs text-gray-500 truncate max-w-[180px]">
@@ -86,7 +90,7 @@ const ApplicationsTable: React.FC<ApplicationsTableProps> = ({
       title: "Job Position",
       dataIndex: "job",
       key: "job_title",
-      render: (_, record: Application) => (
+      render: (_value: unknown, record: Application) => (
         <div className="flex flex-col">
           <span className="truncate block max-w-[200px] font-medium">
             {record.job?.title || "Unknown Job"}
@@ -126,8 +130,13 @@ const ApplicationsTable: React.FC<ApplicationsTableProps> = ({
       key: "actions",
       width: isAdmin ? 150 : 80, // Adjusted width
       fixed: "right" as const,
-      render: (_, record: Application) => {
-        const applicantName = record.profile?.full_name || "this applicant";
+      render: (_value: unknown, record: Application) => {
+        const applicantName =
+          record.profile?.first_name && record.profile?.last_name
+            ? `${record.profile.first_name} ${record.profile.last_name}`
+            : record.profile?.first_name ||
+              record.profile?.last_name ||
+              "this applicant";
         return (
           <div className="flex flex-wrap gap-x-2 gap-y-1 items-center">
             {/* View Details Button */}

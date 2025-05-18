@@ -44,15 +44,15 @@ const Sidebar: React.FC = () => {
         ? [
             {
               icon: <IconUsersPlus stroke={1.5} />,
-              text: "Employee",
-              path: "/employee",
+              text: "Employees", // Original "Employee" link
+              path: "/employees", // Updated path
             },
           ]
         : []),
       // Jobs is visible to all
       { icon: <IconBriefcase stroke={1.5} />, text: "Jobs", path: "/" },
       // Other menu items based on role
-      ...(isAdmin || isEmployee
+      ...(isAdmin || isEmployee // Restore Leaves and Recordings
         ? [
             {
               icon: <IconUserShare stroke={1.5} />,
@@ -116,38 +116,41 @@ const Sidebar: React.FC = () => {
         </div>
       </div>
 
-      {/* Footer Section - No changes to Settings link */}
+      {/* Footer Section - Settings link is already present and should be visible to all logged-in users by default */}
+      {/* The visibility of the settings link itself is not role-restricted here, but the page it leads to is guarded by EmployeeGuard */}
       <div className="flex flex-col items-start pb-8 px-2 gap-6 mt-auto">
         {/* Settings Navigation Link */}
-        <div className="flex flex-col items-start w-full">
-          <Link
-            to="/settings"
-            className={`flex flex-row items-center p-3 gap-3 w-[226px] h-[40px] rounded-md ${
-              isActive("/settings")
-                ? "bg-[#F9F5FF]"
-                : "bg-[#FCFCFD] hover:bg-gray-100"
-            }`}
-          >
-            <div className="flex flex-row items-center gap-3">
-              <span
-                className={`${
-                  isActive("/settings") ? "text-[#6941C6]" : "text-[#667085]"
-                }`}
-              >
-                <IconSettings stroke={1.5} />
-              </span>
-              <span
-                className={`text-sm font-medium ${
-                  isActive("/settings")
-                    ? "text-[#6941C6] text-base"
-                    : "text-[#344054]"
-                }`}
-              >
-                Settings
-              </span>
-            </div>
-          </Link>
-        </div>
+        {user && ( // Show Settings link if user is logged in
+          <div className="flex flex-col items-start w-full">
+            <Link
+              to="/settings"
+              className={`flex flex-row items-center p-3 gap-3 w-[226px] h-[40px] rounded-md ${
+                isActive("/settings")
+                  ? "bg-[#F9F5FF]"
+                  : "bg-[#FCFCFD] hover:bg-gray-100"
+              }`}
+            >
+              <div className="flex flex-row items-center gap-3">
+                <span
+                  className={`${
+                    isActive("/settings") ? "text-[#6941C6]" : "text-[#667085]"
+                  }`}
+                >
+                  <IconSettings stroke={1.5} />
+                </span>
+                <span
+                  className={`text-sm font-medium ${
+                    isActive("/settings")
+                      ? "text-[#6941C6] text-base"
+                      : "text-[#344054]"
+                  }`}
+                >
+                  Settings
+                </span>
+              </div>
+            </Link>
+          </div>
+        )}
 
         {/* Divider */}
         <div className="h-[1px] w-full bg-[#EAECF0]"></div>

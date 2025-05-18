@@ -30,7 +30,7 @@ export interface IRouteItem {
   /** The React component to render for this route. */
   element: ReactNode;
   /** An optional layout component to wrap the route's element. */
-  layout?: ({ children }: { children: ReactNode }) => ReactNode;
+  layout?: React.ComponentType<{ children: ReactNode }>;
   /** An optional guard component to protect the route (e.g., for authentication). */
   guard?: ({ children }: { children: ReactNode }) => ReactNode;
 }
@@ -59,7 +59,7 @@ export interface InputFieldProps<T extends FieldValues> {
   type: string;
   placeholder: string;
   control: Control<T>; // React Hook Form control object
-  error?: FieldError | Merge<FieldError, FieldErrorsImpl<any>>; // RHF error type
+  error?: FieldError | Merge<FieldError, FieldErrorsImpl<T>>; // RHF error type, now using generic T
   showError: boolean; // Controls error message visibility
 }
 
@@ -93,9 +93,12 @@ export interface AuthFormProps {
 
 /** Data structure specifically for login API calls. */
 export interface ILoginData {
-  name?: string; // Usually not needed for login
   email: string;
-  password: string;
+  password?: string; // Password might be optional for Google Sign-In flows if handled differently
+  name?: string; // Keep for now if AuthForm still uses it, but prefer firstName/lastName
+  firstName?: string;
+  lastName?: string;
+  rememberMe?: boolean;
 }
 
 /** Props for the Google Sign-In button component. */

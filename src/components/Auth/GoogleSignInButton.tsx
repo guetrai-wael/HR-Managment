@@ -7,6 +7,7 @@ const GoogleSignInButton: FC<GoogleSignInButtonProps> = ({
   label,
   onSuccess,
   onError,
+  disabled, // Added disabled prop
 }) => {
   const { loginWithGoogle, loading } = useAuth();
 
@@ -28,7 +29,8 @@ const GoogleSignInButton: FC<GoogleSignInButtonProps> = ({
       type="default"
       size="large"
       onClick={handleGoogleSignIn}
-      loading={loading}
+      loading={loading} // This loading comes from useAuth, specific to Google OAuth flow
+      disabled={disabled || loading} // Disable if prop disabled is true or if Google OAuth is loading
       className="w-full flex items-center justify-center gap-2 border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 h-11 rounded-md"
     >
       <svg

@@ -1,16 +1,17 @@
 import React from "react";
-import { Table, Button, Tooltip, Empty, Avatar, Modal } from "antd";
+import { Button, Tooltip, Modal } from "antd";
 import {
   EyeOutlined,
-  EnvironmentOutlined,
-  UserOutlined,
   CheckOutlined,
   CloseOutlined,
   ExclamationCircleFilled,
   MessageOutlined,
 } from "@ant-design/icons";
+import { IconBuildingSkyscraper } from "@tabler/icons-react"; // Added
 import { Application } from "../../types";
 import { ApplicationStatusBadge } from "./index";
+import UserAvatar from "../common/UserAvatar";
+import DataTable from "../common/DataTable"; // Added DataTable import
 
 const { confirm } = Modal;
 
@@ -33,7 +34,7 @@ const ApplicationsTable: React.FC<ApplicationsTableProps> = ({
   onViewDetails,
   onAccept,
   onReject,
-  onInterview, // Destructure new prop
+  onInterview,
 }) => {
   // --- Confirmation Modals ---
   const showConfirm = (
@@ -54,49 +55,37 @@ const ApplicationsTable: React.FC<ApplicationsTableProps> = ({
   };
 
   const columns = [
-    // Applicant Info (No change)
     {
       title: "Applicant",
       dataIndex: "profile",
       key: "applicant",
       render: (_value: unknown, record: Application) => (
-        <div className="flex items-center space-x-3">
-          {isAdmin && (
-            <Avatar
-              src={record.profile?.avatar_url}
-              icon={<UserOutlined />} // Keep UserOutlined for Avatar fallback
-              className="flex-shrink-0"
-            />
-          )}
-          <div className="flex flex-col overflow-hidden">
-            <span className="font-medium truncate max-w-[180px]">
-              {record.profile?.first_name && record.profile?.last_name
-                ? `${record.profile.first_name} ${record.profile.last_name}`
-                : record.profile?.first_name ||
-                  record.profile?.last_name ||
-                  "Unknown User"}
-            </span>
-            {isAdmin && (
-              <span className="text-xs text-gray-500 truncate max-w-[180px]">
-                {record.profile?.email}
-              </span>
-            )}
-          </div>
-        </div>
+        <UserAvatar
+          src={record.profile?.avatar_url}
+          firstName={record.profile?.first_name}
+          lastName={record.profile?.last_name}
+          email={isAdmin ? record.profile?.email : undefined} // Show email only for admin
+          showName={true}
+          size={32} // Increased size from "small" to a numeric value for more control
+          containerClassName="flex items-center space-x-2 py-1" // space-x-2 provides gap
+          nameClassName="font-medium truncate max-w-[150px]"
+          emailClassName="text-xs text-gray-500 truncate max-w-[150px]"
+        />
       ),
     },
     // Job Info (No change)
     {
-      title: "Job Position",
+      title: "Job & Department", // Renamed from "Job Position"
       dataIndex: "job",
-      key: "job_title",
+      key: "job_department", // Renamed from "job_title"
       render: (_value: unknown, record: Application) => (
         <div className="flex flex-col">
           <span className="truncate block max-w-[200px] font-medium">
             {record.job?.title || "Unknown Job"}
           </span>
           <span className="text-xs text-gray-500 flex items-center">
-            <EnvironmentOutlined className="mr-1" />
+            <IconBuildingSkyscraper size={14} className="mr-1" />{" "}
+            {/* Changed icon */}
             {record.job?.department?.name || "No Department"}
           </span>
         </div>
@@ -227,33 +216,21 @@ const ApplicationsTable: React.FC<ApplicationsTableProps> = ({
   ];
 
   return (
-    <div className="applications-table-wrapper overflow-hidden">
-      <Table
-        dataSource={applications}
-        columns={columns}
-        rowKey="id"
-        loading={loading}
-        pagination={{
-          pageSize: 10,
-          showSizeChanger: false,
-          hideOnSinglePage: applications.length <= 10,
-          showTotal: (total) => `Total ${total} applications`,
-          responsive: true,
-        }}
-        className="applications-table"
-        scroll={{ x: "max-content" }}
-        size="middle"
-        locale={{
-          emptyText: (
-            <Empty
-              description="No applications found"
-              image={Empty.PRESENTED_IMAGE_SIMPLE}
-            />
-          ),
-        }}
-        // --- REMOVED onRow click handler ---
-      />
-    </div>
+    <DataTable<Application>
+      dataSource={applications}
+      columns={columns}
+      loading={loading}
+      rowKey="id"
+      tableClassName="applications-table"
+      emptyTextDescription="No applications found"
+      pagination={{
+        // Example of overriding default pagination from DataTable
+        // pageSize: 5, // If we wanted a different page size
+        showTotal: (total) => `Total ${total} applications`, // Custom total message
+      }}
+      // scroll and size props will use DataTable defaults or can be overridden here
+      // size="middle" // This was on Ant Table, can be passed to DataTable if needed
+    />
   );
 };
 

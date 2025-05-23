@@ -1,10 +1,10 @@
 import React, { useState } from "react";
 import { Form, Input, Upload, Button, message } from "antd";
 import { UploadOutlined } from "@ant-design/icons";
-import type { UploadFile } from "antd/es/upload/interface";
+import type { UploadFile, RcFile } from "antd/es/upload/interface";
 import { useUser, useApplicationActions } from "../../hooks";
 import { ApplicationFormProps, ApplicationFormValues } from "../../types";
-import { handleError } from "../../utils/errorHandler";
+import FormActions from "../common/FormActions";
 
 const { TextArea } = Input;
 
@@ -17,8 +17,7 @@ const ApplicationForm: React.FC<ApplicationFormProps> = ({
   const [form] = Form.useForm();
   const [fileList, setFileList] = useState<UploadFile[]>([]);
   const { user } = useUser();
-  const { handleSubmitApplication, loading: submitting } =
-    useApplicationActions();
+  const { submitApplication, isSubmitting } = useApplicationActions();
 
   const handleSubmit = async (values: ApplicationFormValues) => {
     if (!user) {
@@ -26,34 +25,33 @@ const ApplicationForm: React.FC<ApplicationFormProps> = ({
       return;
     }
 
-    try {
-      // Prepare application data
-      const applicationData = {
-        job_id: typeof jobId === "string" ? parseInt(jobId, 10) : jobId,
-        user_id: user.id,
-        cover_letter: values.coverLetter || "",
-      };
+    const applicationData = {
+      job_id: typeof jobId === "string" ? parseInt(jobId, 10) : jobId,
+      user_id: user.id,
+      cover_letter: values.coverLetter || "",
+    };
 
-      // Get the file from fileList if available
-      const file =
-        fileList.length > 0 && fileList[0].originFileObj
-          ? fileList[0].originFileObj
-          : undefined;
+    const resumeFile =
+      fileList.length > 0 && fileList[0].originFileObj
+        ? (fileList[0].originFileObj as File)
+        : undefined;
 
-      // Submit application using the service
-      const success = await handleSubmitApplication(applicationData, file);
-
-      if (success) {
-        form.resetFields();
-        setFileList([]);
-        onSuccess();
+    await submitApplication(
+      { applicationData, resumeFile },
+      {
+        onSuccess: () => {
+          form.resetFields();
+          setFileList([]);
+          onSuccess();
+        },
+        onError: (error) => {
+          console.error("Submission error in component:", error);
+        },
       }
-    } catch (error) {
-      handleError(error, { userMessage: "Failed to submit application" });
-    }
+    );
   };
 
-  const beforeUpload = (file: File) => {
+  const beforeUpload = (file: RcFile) => {
     const isPDF = file.type === "application/pdf";
     const isDocx =
       file.type ===
@@ -68,14 +66,20 @@ const ApplicationForm: React.FC<ApplicationFormProps> = ({
       message.error("File must be smaller than 5MB!");
     }
 
-    return (isPDF || isDocx) && isLt5M;
+    if (!((isPDF || isDocx) && isLt5M)) {
+      return Upload.LIST_IGNORE;
+    }
+    setFileList([file as UploadFile]);
+    return false;
+  };
+
+  const handleRemove = () => {
+    setFileList([]);
   };
 
   return (
     <Form form={form} layout="vertical" onFinish={handleSubmit}>
       <h3 className="text-lg font-medium mb-4">Apply for: {jobTitle}</h3>
-
-      {/* Update to the following */}
       <div className="space-y-6">
         <Form.Item
           name="coverLetter"
@@ -89,16 +93,12 @@ const ApplicationForm: React.FC<ApplicationFormProps> = ({
           />
         </Form.Item>
 
-        <Form.Item
-          name="resume"
-          label="Resume/CV"
-          rules={[{ required: true, message: "Please upload your resume" }]}
-        >
+        <Form.Item name="resume" label="Resume/CV">
           <Upload
             beforeUpload={beforeUpload}
+            onRemove={handleRemove}
             maxCount={1}
             fileList={fileList}
-            onChange={({ fileList }) => setFileList(fileList)}
             className="upload-list-inline w-full"
           >
             <Button
@@ -110,19 +110,16 @@ const ApplicationForm: React.FC<ApplicationFormProps> = ({
           </Upload>
         </Form.Item>
 
-        <div className="form-actions-container flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <Button onClick={onCancel} className="!w-full sm:!w-auto">
-            Cancel
-          </Button>
-          <Button
-            type="primary"
-            htmlType="submit"
-            loading={submitting}
-            className="!w-full sm:!w-auto"
-          >
-            Submit Application
-          </Button>
-        </div>
+        <FormActions
+          primaryActionText="Submit Application"
+          onPrimaryAction={() => form.submit()}
+          primaryActionProps={{
+            loading: isSubmitting,
+            htmlType: "submit",
+          }}
+          secondaryActionText="Cancel"
+          onSecondaryAction={onCancel}
+        />
       </div>
     </Form>
   );

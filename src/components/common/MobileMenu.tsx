@@ -15,6 +15,7 @@ import {
   IconSettings,
   IconLogout,
 } from "@tabler/icons-react";
+import UserAvatar from "./UserAvatar"; // Import UserAvatar
 
 const MobileMenu: React.FC = () => {
   const { user } = useUser();
@@ -39,8 +40,9 @@ const MobileMenu: React.FC = () => {
     if (path === "/home") return "Home";
     if (path === "/applications")
       return isAdmin ? "Applications Management" : "My Applications";
+    if (path === "/employees") return "Employee Management"; // Corrected title
     if (path === "/leaves") return "Leaves";
-    if (path === "/employee") return "Employee";
+    // if (path === "/employee") return "Employee"; // This line seems redundant or for a different page. Clarify if needed.
     if (path === "/recordings") return "Recordings";
     if (path === "/settings") return "Settings";
 
@@ -167,23 +169,12 @@ const MobileMenu: React.FC = () => {
           <div className="border-t border-gray-200 mt-4 pt-4 px-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full overflow-hidden">
-                  {user?.user_metadata?.avatar_url ? (
-                    <img
-                      src={user.user_metadata.avatar_url}
-                      alt="User"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <img
-                      src={`https://ui-avatars.com/api/?name=${encodeURIComponent(
-                        user?.email?.split("@")[0] || "User"
-                      )}&background=6941C6&color=fff`}
-                      alt="User"
-                      className="w-full h-full object-cover"
-                    />
-                  )}
-                </div>
+                <UserAvatar
+                  src={user?.user_metadata?.avatar_url}
+                  firstName={user?.email?.split("@")[0]} // Changed from name to firstName
+                  // lastName can be added if available, e.g., user?.user_metadata?.last_name
+                  size={40}
+                />
                 {/* User Info - Update role display */}
                 <div className="flex flex-col">
                   <span className="text-sm font-medium text-[#101828]">

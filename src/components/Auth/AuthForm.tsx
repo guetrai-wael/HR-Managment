@@ -1,12 +1,18 @@
-import { FC, useState } from "react";
-import { useForm, Controller, Path } from "react-hook-form";
+import { FC, useState } from "react"; // Removed useEffect
+import { useForm, Controller, Path, Control } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
-import { Button, Checkbox } from "antd";
+import { Checkbox } from "antd";
 import { InputField } from "./index";
 import { AuthFormProps, AuthFormValues } from "../../types";
 import { GoogleSignInButton } from "./index";
+import FormActions from "../common/FormActions";
 
-const AuthForm: FC<AuthFormProps> = ({
+// Update AuthFormProps to include isLoading
+interface ExtendedAuthFormProps extends AuthFormProps {
+  isLoading?: boolean;
+}
+
+const AuthForm: FC<ExtendedAuthFormProps> = ({
   onSubmit,
   schema,
   submitText,
@@ -14,8 +20,9 @@ const AuthForm: FC<AuthFormProps> = ({
   showRememberMe = false,
   onGoogleSuccess,
   onGoogleError,
+  isLoading: propIsLoading, // Renamed to avoid conflict with internal loading state
 }) => {
-  const [loading, setLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formSubmitted, setFormSubmitted] = useState(false);
 
   const {
@@ -26,9 +33,9 @@ const AuthForm: FC<AuthFormProps> = ({
     resolver: yupResolver(schema),
     defaultValues: {
       ...fields.reduce((acc, field) => {
-        acc[field.name] = "";
+        (acc as Record<string, string>)[field.name] = "";
         return acc;
-      }, {} as Record<string, string>),
+      }, {} as AuthFormValues),
       rememberMe: false,
     },
     mode: "onTouched",
@@ -37,15 +44,17 @@ const AuthForm: FC<AuthFormProps> = ({
 
   const onSubmitForm = async (data: AuthFormValues) => {
     setFormSubmitted(true);
-    setLoading(true);
+    setIsSubmitting(true);
     try {
       await onSubmit(data);
     } catch (error) {
       console.error("Form submission error:", error);
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
   };
+
+  const effectiveIsLoading = propIsLoading || isSubmitting;
 
   return (
     <div className="space-y-4">
@@ -54,21 +63,20 @@ const AuthForm: FC<AuthFormProps> = ({
         className="space-y-6"
         noValidate
       >
-        {/* Map through fields config to render input fields */}
         {fields.map((field) => (
-          <InputField
+          <InputField<AuthFormValues>
             key={field.name}
             name={field.name as Path<AuthFormValues>}
             label={field.label}
             type={field.type}
             placeholder={field.placeholder}
-            control={control}
+            control={control as Control<AuthFormValues>}
             error={errors[field.name as keyof AuthFormValues]}
             showError={formSubmitted}
+            disabled={effectiveIsLoading}
           />
         ))}
 
-        {/* Optional Remember Me checkbox for login */}
         {showRememberMe && (
           <div className="flex items-center">
             <Controller
@@ -79,6 +87,7 @@ const AuthForm: FC<AuthFormProps> = ({
                   checked={field.value}
                   onChange={(e) => field.onChange(e.target.checked)}
                   className="text-gray-700"
+                  disabled={effectiveIsLoading}
                 >
                   Remember me for 30 days
                 </Checkbox>
@@ -87,25 +96,27 @@ const AuthForm: FC<AuthFormProps> = ({
           </div>
         )}
 
-        {/* Submit button with loading state */}
-        <div className="flex flex-col gap-4 width-full">
-          <Button
-            type="primary"
-            htmlType="submit"
-            className="w-full"
-            loading={loading}
-            style={{
+        <FormActions
+          primaryActionText={submitText}
+          onPrimaryAction={() => handleSubmit(onSubmitForm)()}
+          primaryActionProps={{
+            loading: effectiveIsLoading,
+            htmlType: "submit",
+            style: {
               boxShadow: "none",
               transition: "background-color 0.2s ease-in-out",
-            }}
-          >
-            {submitText}
-          </Button>
-          {/* Google Sign-in Button */}
+            },
+            disabled: effectiveIsLoading,
+          }}
+          containerClassName="flex flex-col gap-4 w-full"
+        />
+
+        <div className="flex flex-col gap-4 w-full">
           <GoogleSignInButton
             label={`Continue with Google`}
             onSuccess={onGoogleSuccess}
             onError={(error) => onGoogleError?.(error)}
+            disabled={effectiveIsLoading}
           />
         </div>
       </form>

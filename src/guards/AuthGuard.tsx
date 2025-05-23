@@ -1,18 +1,20 @@
 import { Navigate } from "react-router-dom";
 import { useUser } from "../hooks/index";
+import QueryBoundary from "../components/common/QueryBoundary";
 
 const AuthGuard = ({ children }: { children: React.ReactNode }) => {
-  const { user, loading } = useUser();
+  const { user, authLoading } = useUser();
 
-  if (loading) {
-    return null; // The loading state is already handled by the UserContext
-  }
-
-  if (!user) {
-    return <Navigate to="/login" />;
-  }
-
-  return <>{children}</>;
+  return (
+    <QueryBoundary
+      isLoading={authLoading}
+      isError={false}
+      error={null}
+      loadingTip="Verifying authentication..."
+    >
+      {!user && !authLoading ? <Navigate to="/login" /> : <>{children}</>}
+    </QueryBoundary>
+  );
 };
 
 export default AuthGuard;

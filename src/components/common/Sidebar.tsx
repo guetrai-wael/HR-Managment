@@ -3,7 +3,6 @@ import { useUser, useRole } from "../../hooks/index";
 import { useAuth } from "../../hooks/useAuth";
 import { Link, useLocation } from "react-router-dom";
 import {
-  IconUserShare,
   IconHome,
   IconClipboardText,
   IconUsersPlus,
@@ -11,9 +10,11 @@ import {
   IconVideo,
   IconSettings,
   IconLogout,
+  IconCalendarEvent, // Used for all Leaves links
 } from "@tabler/icons-react";
 
 import Logo from "../../assets/icons/Logo.svg";
+import UserAvatar from "./UserAvatar"; // Import UserAvatar
 
 const Sidebar: React.FC = () => {
   const { user } = useUser();
@@ -29,8 +30,8 @@ const Sidebar: React.FC = () => {
   const navItems = useMemo(() => {
     const items = [
       { icon: <IconHome stroke={1.5} />, text: "Home", path: "/home" },
-      // Show Applications to all authenticated users (including job seekers)
-      ...(isAdmin || isEmployee || isJobSeeker // Add isJobSeeker here
+      // Show Applications to all authenticated users
+      ...(isAdmin || isEmployee || isJobSeeker
         ? [
             {
               icon: <IconClipboardText stroke={1.5} />,
@@ -39,26 +40,36 @@ const Sidebar: React.FC = () => {
             },
           ]
         : []),
-      // Only show employee management for admins
+      // Admin-specific links
       ...(isAdmin
         ? [
             {
               icon: <IconUsersPlus stroke={1.5} />,
-              text: "Employees", // Original "Employee" link
-              path: "/employees", // Updated path
+              text: "Employees",
+              path: "/employees",
+            },
+            {
+              icon: <IconCalendarEvent stroke={1.5} />, // Consistent icon
+              text: "Leaves", // Consistent label
+              path: "/leaves", // Points to the consolidated leave page
             },
           ]
         : []),
       // Jobs is visible to all
       { icon: <IconBriefcase stroke={1.5} />, text: "Jobs", path: "/" },
-      // Other menu items based on role
-      ...(isAdmin || isEmployee // Restore Leaves and Recordings
+      // Employee-specific links (if not admin)
+      ...(isEmployee && !isAdmin // Show "My Leaves" only if employee AND not admin (admin already has a "Leaves" link)
         ? [
             {
-              icon: <IconUserShare stroke={1.5} />,
-              text: "Leaves",
+              icon: <IconCalendarEvent stroke={1.5} />,
+              text: "Leaves", // Consistent label
               path: "/leaves",
             },
+          ]
+        : []),
+      // Links for both admin and employee (excluding job seekers for recordings)
+      ...(isAdmin || isEmployee
+        ? [
             {
               icon: <IconVideo stroke={1.5} />,
               text: "Recordings",
@@ -67,7 +78,21 @@ const Sidebar: React.FC = () => {
           ]
         : []),
     ];
-    return items;
+    // Deduplicate navItems based on path to avoid multiple "Leaves" links for admins who are also employees
+    const uniqueNavItems = items.reduce((acc, current) => {
+      const x = acc.find((item) => item.path === current.path);
+      if (!x) {
+        return acc.concat([current]);
+      }
+      // If admin and employee both have a /leaves path, prioritize the admin one (which is typically earlier in the array)
+      // Or, ensure the logic above correctly assigns only one /leaves path for such users.
+      // The current logic: admin gets a /leaves. If user is employee AND NOT admin, they get a /leaves.
+      // This should prevent duplicates. If an admin is also an employee, the isAdmin block adds the /leaves link,
+      // and the (isEmployee && !isAdmin) block is skipped for that user.
+      return acc;
+    }, [] as typeof items);
+
+    return uniqueNavItems;
   }, [isAdmin, isEmployee, isJobSeeker]);
 
   return (
@@ -158,24 +183,16 @@ const Sidebar: React.FC = () => {
         {/* Account - Update to show job seeker role */}
         <div className="flex flex-row justify-between items-center px-2 w-full">
           <div className="flex flex-row items-center gap-3">
-            {/* Avatar - No changes */}
-            <div className="w-[40px] h-[40px] rounded-full bg-gray-300 overflow-hidden">
-              {user?.user_metadata?.avatar_url ? (
-                <img
-                  src={user.user_metadata.avatar_url}
-                  alt="User avatar"
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <img
-                  src={`https://ui-avatars.com/api/?name=${encodeURIComponent(
-                    user?.email?.split("@")[0] || "User"
-                  )}&background=6941C6&color=fff`}
-                  alt="User avatar"
-                  className="w-full h-full object-cover"
-                />
-              )}
-            </div>
+            {/* Avatar - Use UserAvatar component */}
+            <UserAvatar
+              src={user?.user_metadata?.avatar_url}
+              firstName={
+                user?.user_metadata?.first_name || user?.email?.split("@")[0]
+              }
+              lastName={user?.user_metadata?.last_name}
+              email={user?.email}
+              size={40}
+            />
 
             {/* User Info - Update role display */}
             <div className="flex flex-col">

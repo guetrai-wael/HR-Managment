@@ -1,132 +1,92 @@
-import React, { useState } from "react";
-import { Table, Button, Space, Tag, Popconfirm, message, Tooltip } from "antd"; // Added Tooltip
+import React from "react";
+import { useNavigate } from "react-router-dom";
+import { Button, Space, Tag, Popconfirm, Tooltip } from "antd";
 import { ColumnsType } from "antd/es/table";
 import { UserProfile } from "../../types";
 import { formatDate } from "../../utils/formatDate";
 import { terminateEmployee } from "../../services/api/userService";
-import { handleError } from "../../utils/errorHandler";
-import { IconEye, IconTrash } from "@tabler/icons-react"; // Added icons
-import EmployeeProfileModal from "./EmployeeProfileModal"; // Import the modal component
+import {
+  IconEye,
+  IconTrash,
+  IconBuildingSkyscraper,
+} from "@tabler/icons-react";
+import { useMutationHandler } from "../../hooks/useMutationHandler";
+import { useQueryClient } from "@tanstack/react-query";
+import UserAvatar from "../common/UserAvatar";
+import DataTable from "../common/DataTable";
 
-// Extend UserProfile or create a specific type for the table data
-// UserProfile already includes first_name and last_name as string | null
-// Omit 'full_name' as it's no longer part of UserProfile after recent changes in types/models.ts
 interface EmployeeUIData extends UserProfile {
-  // UserProfile now has first_name and last_name
   department_name?: string;
-  avatar_url?: string | null; // Ensure avatar_url is part of the interface
-  key?: React.Key; // For Ant Design table keys
 }
 
 interface EmployeeListTableProps {
   employees: EmployeeUIData[];
-  refetchEmployees: () => void;
 }
 
-const EmployeeListTable: React.FC<EmployeeListTableProps> = ({
-  employees,
-  refetchEmployees,
-}) => {
-  const [isModalVisible, setIsModalVisible] = useState(false);
-  const [selectedEmployee, setSelectedEmployee] =
-    useState<EmployeeUIData | null>(null);
+const EmployeeListTable: React.FC<EmployeeListTableProps> = ({ employees }) => {
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const handleViewProfile = (employee: EmployeeUIData) => {
-    setSelectedEmployee(employee);
-    setIsModalVisible(true);
-  };
-
-  const handleModalClose = () => {
-    setIsModalVisible(false);
-    setSelectedEmployee(null);
-  };
-
-  const handleTerminate = async (userId: string) => {
-    try {
-      const success = await terminateEmployee(userId);
-      if (success) {
-        message.success("Employee terminated successfully.");
-        refetchEmployees(); // Refresh the list
-      } else {
-        // Error should have been handled by terminateEmployee's handleError
-        // but a generic message here can be a fallback.
-        message.error("Failed to terminate employee. See logs for details.");
-      }
-    } catch (error) {
-      handleError(error, {
-        userMessage:
-          "An unexpected error occurred while terminating the employee.",
-      });
+    if (employee.id) {
+      navigate(`/employees/${employee.id}`);
     }
+  };
+
+  const { mutate: terminateEmployeeMutation, isPending: isTerminating } =
+    useMutationHandler<UserProfile, Error, string>({
+      mutationFn: terminateEmployee,
+      queryClient,
+      successMessage: "Employee terminated successfully.",
+      errorMessagePrefix: "Failed to terminate employee",
+      invalidateQueries: [["employees"]],
+    });
+
+  const handleTerminate = (userId: string) => {
+    if (!userId) {
+      console.error("User ID is undefined, cannot terminate.");
+      return;
+    }
+    terminateEmployeeMutation(userId);
   };
 
   const columns: ColumnsType<EmployeeUIData> = [
     {
-      title: "Name", // Changed from "Full Name"
-      // dataIndex is not strictly needed if using a custom render that accesses multiple record fields
-      key: "name", // Changed key
-      render: (_, record: EmployeeUIData) => {
-        const fullName = `${record.first_name || ""} ${
-          record.last_name || ""
-        }`.trim();
-        const initials = `${record.first_name ? record.first_name[0] : ""}${
-          record.last_name ? record.last_name[0] : ""
-        }`.toUpperCase();
-        return (
-          <div className="flex items-center py-1">
-            <div className="mr-2 flex-shrink-0">
-              {record.avatar_url ? (
-                <img
-                  src={record.avatar_url}
-                  alt={fullName || "Avatar"}
-                  className="w-8 h-8 rounded-full object-cover"
-                />
-              ) : (
-                <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-white text-xs font-semibold">
-                  {initials || "?"} {/* Updated to use initials */}
-                </div>
-              )}
-            </div>
-            <span className="font-medium whitespace-nowrap text-sm">
-              {fullName || "N/A"}
+      title: "Employee",
+      key: "employee",
+      render: (_, record: EmployeeUIData) => (
+        <UserAvatar
+          src={record.avatar_url}
+          firstName={record.first_name}
+          lastName={record.last_name}
+          email={record.email}
+          showName={true}
+          size={32}
+          containerClassName="flex items-center space-x-2 py-1"
+          nameClassName="font-medium whitespace-nowrap text-sm"
+          emailClassName="text-xs text-gray-500 truncate"
+        />
+      ),
+      width: 250,
+      fixed: "left",
+    },
+    {
+      title: "Position & Department",
+      key: "position_department",
+      render: (_, record: EmployeeUIData) => (
+        <div className="flex flex-col">
+          <span className="whitespace-nowrap text-sm font-medium">
+            {record.position || "N/A"}
+          </span>
+          {record.department_name && (
+            <span className="text-xs text-gray-500 flex items-center">
+              <IconBuildingSkyscraper size={14} className="mr-1" />
+              {record.department_name}
             </span>
-          </div>
-        );
-      },
-      width: 200, // Base width, will be primary column on small screens
-    },
-    {
-      title: "Job Title",
-      dataIndex: "position",
-      key: "position",
-      render: (position) => (
-        <span className="whitespace-nowrap text-sm">{position || "N/A"}</span>
+          )}
+        </div>
       ),
-      width: 150, // Base width
-    },
-    {
-      title: "Department",
-      dataIndex: "department_name",
-      key: "department_name",
-      render: (departmentName) => (
-        <span className="whitespace-nowrap text-sm">
-          {departmentName || "N/A"}
-        </span>
-      ),
-      width: 140,
-      responsive: ["lg"], // Visible on large screens and up
-    },
-    {
-      title: "Email",
-      dataIndex: "email",
-      key: "email",
-      render: (email) => (
-        <span className="block truncate text-sm" style={{ maxWidth: "180px" }}>
-          {email || "N/A"}
-        </span>
-      ),
-      width: 180,
-      responsive: ["xl"], // Visible on extra-large screens and up
+      width: 200,
     },
     {
       title: "Phone",
@@ -135,8 +95,8 @@ const EmployeeListTable: React.FC<EmployeeListTableProps> = ({
       render: (phone) => (
         <span className="whitespace-nowrap text-sm">{phone || "N/A"}</span>
       ),
-      width: 120,
-      responsive: ["md"], // Visible on medium screens and up
+      width: 130,
+      responsive: ["md"],
     },
     {
       title: "Hiring Date",
@@ -150,8 +110,8 @@ const EmployeeListTable: React.FC<EmployeeListTableProps> = ({
       sorter: (a, b) =>
         new Date(a.hiring_date || 0).getTime() -
         new Date(b.hiring_date || 0).getTime(),
-      width: 110,
-      responsive: ["xl"], // Visible on extra-large screens and up
+      width: 120,
+      responsive: ["xl"],
     },
     {
       title: "Status",
@@ -161,31 +121,29 @@ const EmployeeListTable: React.FC<EmployeeListTableProps> = ({
         let color = "grey";
         if (status === "Active") color = "green";
         else if (status === "Terminated") color = "red";
-        // Reduced padding and font size for the tag to make it smaller
         return (
           <Tag color={color} className="whitespace-nowrap text-xs px-1 py-0.5">
             {status || "Unknown"}
           </Tag>
         );
       },
-      width: 100, // Adjusted width slightly
+      width: 100,
       fixed: "right",
     },
     {
       title: "Actions",
       key: "actions",
       fixed: "right",
-      width: 80, // Adjusted width slightly
+      width: 90,
       render: (_, record) => (
-        <Space size="small">
-          {" "}
-          {/* Kept space small */}
+        <Space size={4}>
           <Tooltip title="View Profile">
             <Button
               type="text"
-              icon={<IconEye size={16} />} /* Kept icon size small */
-              onClick={() => handleViewProfile(record)} // Updated onClick
-              className="p-1" // Kept padding small
+              icon={<IconEye size={16} />}
+              onClick={() => handleViewProfile(record)}
+              className="p-1"
+              disabled={isTerminating}
             />
           </Tooltip>
           {record.employment_status === "Active" && (
@@ -193,15 +151,18 @@ const EmployeeListTable: React.FC<EmployeeListTableProps> = ({
               <Popconfirm
                 title="Are you sure you want to terminate this employee?"
                 onConfirm={() => record.id && handleTerminate(record.id)}
-                okText="Yes, Terminate"
+                okText="Yes"
                 cancelText="No"
                 placement="leftTop"
+                disabled={isTerminating}
               >
                 <Button
                   type="text"
+                  icon={<IconTrash size={16} />}
                   danger
-                  icon={<IconTrash size={16} />} /* Kept icon size small */
-                  className="p-1" // Kept padding small
+                  className="p-1"
+                  loading={isTerminating}
+                  disabled={isTerminating}
                 />
               </Popconfirm>
             </Tooltip>
@@ -211,27 +172,15 @@ const EmployeeListTable: React.FC<EmployeeListTableProps> = ({
     },
   ];
 
-  // Add key to each employee record for Ant Design Table
-  const tableData = employees.map((emp) => ({ ...emp, key: emp.id }));
-
   return (
     <>
-      <Table
+      <DataTable<EmployeeUIData>
         columns={columns}
-        dataSource={tableData}
-        rowKey="id"
-        // scroll={{ x: "calc(1000px + 50%)" }} // Still keeping scroll.x commented out
-        pagination={{ pageSize: 10, className: "mt-4" }}
-        className="shadow-md rounded-lg bg-white text-sm" // text-sm is already here, will ensure cell content also adheres
-        size="small" // Added Ant Design Table size="small" prop for more compact rows
+        dataSource={employees}
+        loading={isTerminating}
+        tableClassName="employee-list-table min-w-full"
+        emptyTextDescription="No employees found"
       />
-      {selectedEmployee && (
-        <EmployeeProfileModal
-          employee={selectedEmployee}
-          visible={isModalVisible}
-          onClose={handleModalClose}
-        />
-      )}
     </>
   );
 };

@@ -1,193 +1,228 @@
-import React, { useEffect, useState, useMemo } from "react";
-import { Typography, Spin, Alert, Input, Select, Row, Col } from "antd";
+import React, { useState, useMemo } from "react";
+import { Form, Button } from "antd";
+import { useQuery } from "@tanstack/react-query";
 import { getAllEmployees } from "../../services/api/userService";
-import { fetchDepartments } from "../../services/api/departmentService"; // Import fetchDepartments
-import { UserProfile, Department } from "../../types"; // Import Department
+import { fetchDepartments } from "../../services/api/departmentService";
+import { UserProfile, Department } from "../../types";
 import EmployeeListTable from "../../components/Employees/EmployeeListTable";
-import { handleError } from "../../utils/errorHandler";
+import QueryBoundary from "../../components/common/QueryBoundary";
+import { PageLayout } from "../../components/common/index";
+import {
+  SearchFilterInput,
+  SimpleSelectFilter,
+  DataDrivenSelectFilter,
+  ResetFilterButton,
+  MobileFilterWrapper,
+} from "../../components/common/FilterFields";
 
-const { Title } = Typography;
-const { Option } = Select;
-
-// Use UserProfile directly as it should contain all necessary fields (first_name, last_name, avatar_url, etc.)
-// Add department_name as it's joined in getAllEmployees
 interface EmployeeUIData extends UserProfile {
   department_name?: string;
-  // avatar_url is already in UserProfile, ensure UserProfile type is up-to-date
+}
+
+// Define a type for the filter values
+interface EmployeePageFilterValues {
+  searchTerm?: string;
+  statusFilter?: string;
+  departmentFilter?: number;
+  jobTitleFilter?: string;
 }
 
 const Employees: React.FC = () => {
-  const [employees, setEmployees] = useState<EmployeeUIData[]>([]);
-  const [departments, setDepartments] = useState<Department[]>([]); // State for departments
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState<string>("");
-  const [statusFilter, setStatusFilter] = useState<string | undefined>(
-    undefined
-  ); // 'Active', 'Terminated', or undefined for all
-  const [departmentFilter, setDepartmentFilter] = useState<number | undefined>(
-    undefined
-  ); // State for department filter
-  const [jobTitleFilter, setJobTitleFilter] = useState<string | undefined>(
-    undefined
-  ); // State for job title filter
+  const [form] = Form.useForm<EmployeePageFilterValues>();
+  const [filters, setFilters] = useState<EmployeePageFilterValues>({});
 
-  const fetchInitialData = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [employeesData, departmentsData] = await Promise.all([
-        getAllEmployees(),
-        fetchDepartments(),
-      ]);
-      setEmployees(Array.isArray(employeesData) ? employeesData : []);
-      setDepartments(Array.isArray(departmentsData) ? departmentsData : []);
-    } catch (err) {
-      setError("Failed to fetch initial data. Please try again.");
-      handleError(err, {
-        userMessage: "Could not load employee or department data.",
-      });
-      setEmployees([]);
-      setDepartments([]);
-    } finally {
-      setLoading(false);
-    }
+  const handleResetFilters = () => {
+    form.resetFields();
+    setFilters({});
   };
 
-  useEffect(() => {
-    fetchInitialData();
-  }, []);
+  const {
+    data: employees = [],
+    isLoading: isLoadingEmployees,
+    error: errorEmployees,
+  } = useQuery<EmployeeUIData[], Error>({
+    queryKey: ["employees"],
+    queryFn: getAllEmployees,
+  });
+
+  const {
+    data: departments = [],
+    isLoading: isLoadingDepartments,
+    error: errorDepartments,
+  } = useQuery<Department[], Error>({
+    queryKey: ["departments"],
+    queryFn: fetchDepartments,
+  });
 
   const uniqueJobTitles = useMemo(() => {
     const titles = new Set(
-      employees.map((emp) => emp.position).filter(Boolean)
+      (employees as EmployeeUIData[])
+        .map((emp: EmployeeUIData) => emp.position)
+        .filter(Boolean)
     );
-    return Array.from(titles) as string[];
+    // Transform for DataDrivenSelectFilter
+    return Array.from(titles).map((title) => ({ value: title, label: title }));
   }, [employees]);
 
+  // Update filteredEmployees to use the 'filters' state object
   const filteredEmployees = useMemo(() => {
-    let filtered = employees;
+    console.log(
+      "[Employees] Recalculating filteredEmployees. Current filters:",
+      filters
+    );
+    console.log(
+      "[Employees] Raw employees before filtering:",
+      JSON.parse(JSON.stringify(employees))
+    );
 
-    if (statusFilter) {
+    let filtered: EmployeeUIData[] = employees as EmployeeUIData[];
+
+    if (filters.statusFilter) {
+      console.log(`[Employees] Filtering by status: "${filters.statusFilter}"`);
+      filtered = filtered.filter((emp: EmployeeUIData) => {
+        const isMatch = emp.employment_status === filters.statusFilter;
+        return isMatch;
+      });
+    }
+
+    if (filters.departmentFilter) {
+      console.log(
+        `[Employees] Filtering by departmentId: "${filters.departmentFilter}"`
+      );
       filtered = filtered.filter(
-        (emp) => emp.employment_status === statusFilter
+        (emp: EmployeeUIData) => emp.department_id === filters.departmentFilter
       );
     }
 
-    if (departmentFilter) {
+    if (filters.jobTitleFilter) {
+      console.log(
+        `[Employees] Filtering by jobTitle: "${filters.jobTitleFilter}"`
+      );
       filtered = filtered.filter(
-        (emp) => emp.department_id === departmentFilter
+        (emp: EmployeeUIData) => emp.position === filters.jobTitleFilter
       );
     }
 
-    if (jobTitleFilter) {
-      filtered = filtered.filter((emp) => emp.position === jobTitleFilter);
-    }
-
-    if (searchTerm) {
-      const lowerSearchTerm = searchTerm.toLowerCase();
-      filtered = filtered.filter((emp) => {
+    if (filters.searchTerm) {
+      const lowerSearchTerm = filters.searchTerm.toLowerCase();
+      console.log(`[Employees] Filtering by searchTerm: "${lowerSearchTerm}"`);
+      filtered = filtered.filter((emp: EmployeeUIData) => {
         const fullName = `${emp.first_name || ""} ${emp.last_name || ""}`
           .trim()
           .toLowerCase();
-        return (
-          fullName.includes(lowerSearchTerm) ||
-          (emp.email && emp.email.toLowerCase().includes(lowerSearchTerm))
-        );
+        const emailMatch =
+          emp.email && emp.email.toLowerCase().includes(lowerSearchTerm);
+        const nameMatch = fullName.includes(lowerSearchTerm);
+        return nameMatch || emailMatch;
       });
     }
+    console.log(
+      "[Employees] Resulting filteredEmployees:",
+      JSON.parse(JSON.stringify(filtered))
+    );
     return filtered;
-  }, [employees, searchTerm, statusFilter, departmentFilter, jobTitleFilter]);
+  }, [employees, filters]); // Dependency array updated to 'filters'
 
-  if (loading) {
-    return (
-      <Spin
-        tip="Loading employees..."
-        size="large"
-        className="flex justify-center items-center h-screen"
-      />
-    );
-  }
+  const isLoading = isLoadingEmployees || isLoadingDepartments;
 
-  if (error) {
-    return (
-      <Alert
-        message="Error"
-        description={error}
-        type="error"
-        showIcon
-        className="m-4"
+  const employeeStatusOptions = [
+    { value: "Active", label: "Active" },
+    { value: "Terminated", label: "Terminated" },
+  ];
+
+  const renderFiltersContent = (
+    isDrawer: boolean,
+    closeDrawer?: () => void
+  ) => (
+    <Form
+      form={form}
+      layout={isDrawer ? "vertical" : "inline"}
+      className={isDrawer ? "" : "flex flex-wrap gap-4 items-center"}
+      initialValues={filters}
+      onValuesChange={(_, allValues) => setFilters(allValues)}
+    >
+      <SearchFilterInput
+        name="searchTerm"
+        label={isDrawer ? "Search by Name or Email" : "Search"}
+        placeholder="Name or email..."
+        disabled={isLoading}
+        className={isDrawer ? "w-full" : "flex-grow min-w-[200px]"}
       />
-    );
-  }
+      <SimpleSelectFilter
+        name="statusFilter"
+        label="Status"
+        placeholder="Any Status"
+        options={employeeStatusOptions}
+        disabled={isLoading}
+        className={isDrawer ? "w-full" : "min-w-[150px]"}
+      />
+      <DataDrivenSelectFilter
+        name="departmentFilter"
+        label="Department"
+        placeholder="Any Department"
+        data={departments}
+        valueKey="id"
+        labelKey="name"
+        loading={isLoadingDepartments}
+        disabled={isLoading}
+        className={isDrawer ? "w-full" : "min-w-[180px]"}
+      />
+      <DataDrivenSelectFilter
+        name="jobTitleFilter"
+        label="Job Title"
+        placeholder="Any Job Title"
+        data={uniqueJobTitles} // Use transformed data
+        valueKey="value" // Key for the value in {value: string, label: string}
+        labelKey="label" // Key for the label in {value: string, label: string}
+        loading={isLoadingEmployees && uniqueJobTitles.length === 0}
+        disabled={isLoading}
+        className={isDrawer ? "w-full" : "min-w-[180px]"}
+      />
+      <ResetFilterButton
+        onClick={handleResetFilters}
+        disabled={isLoading}
+        isDrawerButton={isDrawer}
+      />
+      {isDrawer && closeDrawer && (
+        <Button
+          type="primary"
+          onClick={closeDrawer} // Use closeDrawer from props
+          block
+          className="mt-2"
+          disabled={isLoading}
+        >
+          Done
+        </Button>
+      )}
+    </Form>
+  );
 
   return (
-    <div className="p-4 md:p-8">
-      <div className="max-w-7xl mx-auto">
-        <Title level={2} className="mb-6">
-          Employee Management
-        </Title>
-        <Row gutter={[16, 16]} className="mb-6">
-          <Col xs={24} sm={24} md={10} lg={8} xl={7}>
-            <Input
-              placeholder="Search by name or email..."
-              onChange={(e) => setSearchTerm(e.target.value)}
-              allowClear
-              style={{ width: "100%" }}
-              value={searchTerm}
-            />
-          </Col>
-          <Col xs={24} sm={12} md={4} lg={4} xl={3}>
-            <Select
-              placeholder="Status"
-              onChange={setStatusFilter}
-              allowClear
-              style={{ width: "100%" }}
-              value={statusFilter}
-            >
-              <Option value="Active">Active</Option>
-              <Option value="Terminated">Terminated</Option>
-            </Select>
-          </Col>
-          <Col xs={24} sm={12} md={5} lg={4} xl={4}>
-            <Select
-              placeholder="Department"
-              onChange={setDepartmentFilter}
-              allowClear
-              style={{ width: "100%" }}
-              value={departmentFilter}
-              loading={loading && departments.length === 0} // Show loading indicator if departments are being fetched
-            >
-              {departments.map((dept) => (
-                <Option key={dept.id} value={dept.id}>
-                  {dept.name}
-                </Option>
-              ))}
-            </Select>
-          </Col>
-          <Col xs={24} sm={12} md={5} lg={4} xl={4}>
-            <Select
-              placeholder="Job Title"
-              onChange={setJobTitleFilter}
-              allowClear
-              style={{ width: "100%" }}
-              value={jobTitleFilter}
-              loading={loading && uniqueJobTitles.length === 0}
-            >
-              {uniqueJobTitles.map((title) => (
-                <Option key={title} value={title}>
-                  {title}
-                </Option>
-              ))}
-            </Select>
-          </Col>
-        </Row>
-        <EmployeeListTable
-          employees={filteredEmployees}
-          refetchEmployees={fetchInitialData} // Use fetchInitialData to refetch all data
-        />
-      </div>
-    </div>
+    <QueryBoundary
+      isLoading={isLoading}
+      isError={!!errorEmployees || !!errorDepartments}
+      error={errorEmployees || errorDepartments}
+    >
+      <PageLayout
+        title="Employee Management"
+        subtitle="View and manage all employees."
+      >
+        {/* Desktop Filters */}
+        <div className="hidden lg:block mb-2">
+          {renderFiltersContent(false)}
+        </div>
+
+        {/* Mobile Filters */}
+        <MobileFilterWrapper
+          drawerTitle="Filter Employees"
+          isLoading={isLoading}
+        >
+          {({ closeDrawer }) => renderFiltersContent(true, closeDrawer)}
+        </MobileFilterWrapper>
+
+        <EmployeeListTable employees={filteredEmployees} />
+      </PageLayout>
+    </QueryBoundary>
   );
 };
 

@@ -1,29 +1,29 @@
 import { Navigate } from "react-router-dom";
-import { Spin } from "antd";
 import { useUser, useRole } from "../hooks";
+import QueryBoundary from "../components/common/QueryBoundary";
 
 const EmployeeGuard = ({ children }: { children: React.ReactNode }) => {
-  const { user, loading: userLoading } = useUser();
+  const { user, authLoading: userAuthLoading } = useUser();
   const { isAdmin, isEmployee, loading: roleLoading } = useRole();
 
-  if (userLoading || roleLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Spin size="large" />
-      </div>
-    );
-  }
+  const isLoading = userAuthLoading || roleLoading;
 
-  if (!user) {
-    return <Navigate to="/login" />;
-  }
-
-  // Allow access only if user is an employee OR admin
-  if (!isEmployee && !isAdmin) {
-    return <Navigate to="/" />;
-  }
-
-  return <>{children}</>;
+  return (
+    <QueryBoundary
+      isLoading={isLoading}
+      isError={false}
+      error={null}
+      loadingTip="Verifying access..."
+    >
+      {user === null && !isLoading ? (
+        <Navigate to="/login" />
+      ) : user && !isEmployee && !isAdmin && !isLoading ? (
+        <Navigate to="/" />
+      ) : user && (isEmployee || isAdmin) ? (
+        <>{children}</>
+      ) : null}
+    </QueryBoundary>
+  );
 };
 
 export default EmployeeGuard;

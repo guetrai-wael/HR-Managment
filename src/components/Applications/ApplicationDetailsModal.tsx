@@ -1,13 +1,6 @@
 import React from "react";
-import {
-  Modal,
-  Button,
-  Descriptions,
-  Divider,
-  Avatar,
-  Typography,
-  Empty,
-} from "antd";
+import { useNavigate } from "react-router-dom"; // Added useNavigate
+import { Button, Descriptions, Divider, Avatar, Typography, Empty } from "antd";
 import {
   UserOutlined,
   CalendarOutlined,
@@ -16,8 +9,8 @@ import {
 } from "@ant-design/icons";
 import { Application } from "../../types";
 import ApplicationStatusBadge from "./ApplicationStatusBadge";
-// <<< ADD THIS IMPORT >>>
-import { formatDate } from "../../utils/formatDate"; // Assuming this path is correct
+import { formatDate } from "../../utils/formatDate";
+import DetailsModal from "../common/DetailsModal";
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -27,7 +20,6 @@ interface ApplicationDetailsModalProps {
   isAdmin: boolean;
   onClose: () => void;
   onViewResume?: (url: string | null) => void;
-  onViewProfile?: (userId: string) => void;
 }
 
 /**
@@ -39,24 +31,27 @@ const ApplicationDetailsModal: React.FC<ApplicationDetailsModalProps> = ({
   isAdmin,
   onClose,
   onViewResume,
-  onViewProfile,
 }) => {
+  const navigate = useNavigate(); // Added useNavigate hook
+
   if (!application) {
     return null;
   }
 
+  const applicantFullName = application.profile
+    ? `${application.profile.first_name || ""} ${
+        application.profile.last_name || ""
+      }`.trim()
+    : "Unknown User";
+
   return (
-    <Modal
-      open={visible}
-      onCancel={onClose}
+    <DetailsModal
+      visible={visible} // Corrected: DetailsModal expects 'visible'
+      onClose={onClose}
       width={800}
-      footer={[
-        <Button key="close" onClick={onClose}>
-          Close
-        </Button>,
-      ]}
       className="application-details-modal"
       title={`Application Details - ${application.job?.title || "Unknown Job"}`}
+      // Default footer (Close button) will be used from DetailsModal
     >
       {/* Check if application exists before trying to render details */}
       {application && (
@@ -75,18 +70,22 @@ const ApplicationDetailsModal: React.FC<ApplicationDetailsModalProps> = ({
                 />
                 <div className="ml-4">
                   <div className="text-lg font-medium">
-                    {application.profile?.full_name || "Unknown User"}
+                    {
+                      applicantFullName // Use constructed full name
+                    }
                   </div>
                   <Text type="secondary">
                     {application.profile?.email || application.user_id}
                   </Text>
                   {/* View Profile Button */}
-                  {onViewProfile && (
+                  {isAdmin && application.profile && (
                     <Button
                       size="small"
                       type="link"
                       icon={<UserOutlined />}
-                      onClick={() => onViewProfile(application.user_id)}
+                      onClick={() =>
+                        navigate(`/employees/${application.user_id}`)
+                      } // Updated onClick to navigate
                       className="p-0 ml-2"
                     >
                       View Profile
@@ -159,7 +158,7 @@ const ApplicationDetailsModal: React.FC<ApplicationDetailsModalProps> = ({
           </div>
         </div>
       )}
-    </Modal>
+    </DetailsModal>
   );
 };
 

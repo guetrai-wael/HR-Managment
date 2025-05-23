@@ -9,7 +9,7 @@ import { useAuth } from "../../hooks";
 
 const Signup: FC = () => {
   const navigate = useNavigate();
-  const { register, getSession } = useAuth();
+  const { register, getSession, isLoadingRegister } = useAuth();
 
   const SignupSchema = Yup.object().shape({
     firstName: Yup.string()
@@ -33,8 +33,8 @@ const Signup: FC = () => {
     const { email, password, firstName, lastName } = values;
     if (email && password && firstName && lastName) {
       const result = await register(email, password, firstName, lastName);
-      if (result) {
-        navigate("/");
+      if (result && result.user) {
+        navigate("/login");
       }
     } else {
       message.error("All fields are required for signup.");
@@ -101,6 +101,7 @@ const Signup: FC = () => {
             placeholder: "Enter your password",
           },
         ]}
+        isLoading={isLoadingRegister}
       />
     </FormContainer>
   );

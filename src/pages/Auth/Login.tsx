@@ -5,11 +5,11 @@ import LoginBackground from "../../assets/img/log in.png";
 import { ILoginData } from "../../types";
 import { useNavigate } from "react-router-dom";
 import { message } from "antd";
-import { useAuth, useFormSubmission } from "../../hooks/index";
+import { useAuth } from "../../hooks/index";
 
 const Login: FC = () => {
   const navigate = useNavigate();
-  const { login, getSession } = useAuth();
+  const { login, getSession, isLoadingLogin } = useAuth();
 
   const LoginSchema = yup.object().shape({
     email: yup
@@ -22,19 +22,22 @@ const Login: FC = () => {
     password: yup.string().required("password is required"),
   });
 
-  const { handleSubmit, loading: formLoading } = useFormSubmission(
-    async (data: ILoginData) => {
-      const { email, password } = data;
-      const session = await login(email, password);
-      if (session) {
+  const handleSubmit = async (data: ILoginData) => {
+    // Ensure email and password are not undefined before calling login
+    if (data.email && data.password) {
+      const result = await login(data.email, data.password);
+      if (result && result.session) {
         navigate("/");
       }
+    } else {
+      // Handle cases where email or password might be missing, though yup should prevent this.
+      console.error("Login form data is incomplete.");
+      message.error("Email and password are required.");
     }
-  );
+  };
 
   const handleGoogleSuccess = async () => {
     try {
-      // This will be called after the user is redirected back from Google
       const session = await getSession();
       if (session) {
         message.success("Successfully logged in with Google!");
@@ -42,6 +45,7 @@ const Login: FC = () => {
       }
     } catch (error) {
       console.error("Error handling Google login success:", error);
+      message.error("Failed to process Google login. Please try again.");
     }
   };
 
@@ -81,6 +85,7 @@ const Login: FC = () => {
             placeholder: "Enter your password",
           },
         ]}
+        isLoading={isLoadingLogin}
       />
     </FormContainer>
   );

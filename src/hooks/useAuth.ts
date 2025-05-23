@@ -1,61 +1,67 @@
-import { useState } from "react";
-import { message } from "antd";
+import { message } from "antd"; // Used by loginWithGoogle and getSession
 import supabase from "../services/supabaseClient";
 import { useNavigate } from "react-router-dom";
-import { Session, User } from "@supabase/supabase-js";
+import {
+  Session,
+  User,
+  AuthError,
+  SignInWithPasswordCredentials,
+} from "@supabase/supabase-js";
+import { useMutationHandler } from "./useMutationHandler";
+import { useQueryClient } from "@tanstack/react-query";
+
+// Specific type for successful login data
+type LoginData = { user: User; session: Session };
+// Specific type for successful register data
+type RegisterData = { user: User; session: Session | null };
+type LogoutData = void;
+
+// Variables for the register mutation
+interface RegisterMutationVariables {
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+}
 
 /**
  * Custom hook for handling authentication operations
  * Provides login, register, logout and session management functions
  */
 export const useAuth = () => {
-  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
-  /**
-   * Log in with email and password
-   */
-  const login = async (email: string, password: string) => {
-    setLoading(true);
-    try {
-      const { data: sessionResponse, error } =
-        await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
+  const loginMutation = useMutationHandler<
+    LoginData,
+    AuthError,
+    SignInWithPasswordCredentials
+  >({
+    mutationFn: async (credentials) => {
+      const { data, error } = await supabase.auth.signInWithPassword(
+        credentials
+      );
+      if (error) throw error;
+      if (!data.session || !data.user)
+        throw new Error("Login failed: No session or user returned.");
+      return { user: data.user, session: data.session };
+    },
+    queryClient,
+    successMessage: "Successfully logged in",
+    errorMessagePrefix: "Login failed",
+  });
 
-      if (error) {
-        message.error((error as { message: string }).message);
-        return null;
-      }
-
-      message.success("Successfully logged in");
-      return sessionResponse; // Return the actual session data not just 'session'
-    } catch (e) {
-      message.error("An unexpected error occurred");
-      console.error("Login error:", e); // Log the error
-      return null;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  /**
-   * Register a new user with email and password, and now firstName, lastName
-   */
-  const register = async (
-    email: string,
-    password: string,
-    firstName: string,
-    lastName: string
-  ): Promise<{ user: User; session: Session | null } | null> => {
-    setLoading(true);
-    console.log("[useAuth.ts register] Attempting to register user with:", {
-      email,
-      firstName,
-      lastName,
-    });
-    try {
+  const registerMutation = useMutationHandler<
+    RegisterData,
+    AuthError,
+    RegisterMutationVariables
+  >({
+    mutationFn: async ({ email, password, firstName, lastName }) => {
+      console.log("[useAuth.ts register] Attempting to register user with:", {
+        email,
+        firstName,
+        lastName,
+      });
       const { data: authResponse, error: signUpError } =
         await supabase.auth.signUp({
           email,
@@ -68,52 +74,67 @@ export const useAuth = () => {
           },
         });
 
-      if (signUpError) {
-        console.error(
-          "[useAuth.ts register] Supabase Auth signUpError:",
-          signUpError
-        );
-        message.error(signUpError.message || "Registration failed");
-        setLoading(false);
-        return null;
-      }
-
+      if (signUpError) throw signUpError;
       if (!authResponse?.user) {
         console.error(
           "[useAuth.ts register] No user object in authResponse after signUp. This is unexpected."
         );
-        message.error(
+        throw new Error(
           "Registration failed: No user data returned from authentication service."
         );
-        setLoading(false);
-        return null;
       }
-
-      // Profile creation is now handled by a server-side trigger.
-      // Log user object. Session might be null here if email confirmation is pending.
       console.log(
         "[useAuth.ts register] User signed up via Auth (profile to be created by trigger):",
         authResponse.user
       );
-      message.success(
-        "Registration successful! Please check your email to confirm your account."
-      );
-
-      // Return user and session. Session might be null if email confirmation is pending.
       return { user: authResponse.user, session: authResponse.session };
-    } catch (error) {
-      console.error(
-        "[useAuth.ts register] General error during registration:",
-        error
-      );
-      const e =
-        error instanceof Error ? error : new Error("An unknown error occurred");
-      message.error(
-        e.message || "An unexpected error occurred during registration."
-      );
+    },
+    queryClient,
+    successMessage:
+      "Registration successful! Please check your email to confirm your account.",
+    errorMessagePrefix: "Registration failed",
+  });
+
+  const logoutMutation = useMutationHandler<LogoutData, AuthError, void>({
+    mutationFn: async () => {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+    },
+    queryClient,
+    successMessage: "Successfully logged out",
+    errorMessagePrefix: "Logout failed",
+    onSuccess: () => {
+      navigate("/login");
+      queryClient.invalidateQueries({ queryKey: ["user"] });
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
+    },
+  });
+
+  /**
+   * Log in with email and password
+   */
+  const login = async (email: string, password: string) => {
+    return loginMutation.mutateAsync({ email, password });
+  };
+
+  /**
+   * Register a new user with email and password, and now firstName, lastName
+   */
+  const register = async (
+    email: string,
+    password: string,
+    firstName: string,
+    lastName: string
+  ): Promise<RegisterData | null> => {
+    try {
+      return await registerMutation.mutateAsync({
+        email,
+        password,
+        firstName,
+        lastName,
+      });
+    } catch {
       return null;
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -121,7 +142,10 @@ export const useAuth = () => {
    * Sign in with Google OAuth
    */
   const loginWithGoogle = async () => {
-    setLoading(true);
+    // Reset other mutation states if a user tries Google login after a failed email/password attempt
+    loginMutation.reset();
+    registerMutation.reset();
+    logoutMutation.reset();
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -131,73 +155,10 @@ export const useAuth = () => {
     });
 
     if (error) {
-      setLoading(false);
       message.error(error.message);
-      console.error("Google OAuth error:", error); // Log the error
+      console.error("Google OAuth error:", error);
       return false;
     }
-
-    try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (sessionData.session?.user) {
-        const user = sessionData.session.user;
-        const { data: existingProfile, error: fetchError } = await supabase
-          .from("profiles")
-          .select("id, first_name, last_name")
-          .eq("id", user.id)
-          .single();
-
-        if (fetchError && fetchError.code !== "PGRST116") {
-          console.error("Error fetching profile for Google user:", fetchError);
-        }
-
-        const needsUpdate =
-          !existingProfile ||
-          !existingProfile.first_name ||
-          !existingProfile.last_name;
-        const updatePayload: { first_name?: string; last_name?: string } = {};
-
-        if (needsUpdate) {
-          const googleFirstName =
-            user.user_metadata?.first_name || user.user_metadata?.given_name;
-          const googleLastName =
-            user.user_metadata?.last_name || user.user_metadata?.family_name;
-
-          if (googleFirstName) updatePayload.first_name = googleFirstName;
-          if (googleLastName) updatePayload.last_name = googleLastName;
-
-          if (
-            (!updatePayload.first_name || !updatePayload.last_name) &&
-            user.user_metadata?.full_name
-          ) {
-            const nameParts = user.user_metadata.full_name.split(" ");
-            if (!updatePayload.first_name)
-              updatePayload.first_name = nameParts[0];
-            if (!updatePayload.last_name)
-              updatePayload.last_name = nameParts.slice(1).join(" ") || "";
-          }
-
-          if (Object.keys(updatePayload).length > 0) {
-            const { error: updateError } = await supabase
-              .from("profiles")
-              .update(updatePayload)
-              .eq("id", user.id);
-            if (updateError) {
-              console.error(
-                "Error updating profile for Google user:",
-                updateError
-              );
-            }
-          }
-        }
-      }
-    } catch (googleProcessingError) {
-      console.error(
-        "Error during Google login post-processing:",
-        googleProcessingError
-      ); // Log the error
-    }
-    setLoading(false);
     return true;
   };
 
@@ -205,47 +166,52 @@ export const useAuth = () => {
    * Sign out the current user
    */
   const logout = async () => {
-    setLoading(true);
-    const { error } = await supabase.auth.signOut();
-    setLoading(false);
-    if (error) {
-      message.error(error.message);
-      console.error("Logout error:", error); // Log the error
+    try {
+      await logoutMutation.mutateAsync();
+      return true;
+    } catch {
       return false;
     }
-    message.success("Successfully logged out");
-    navigate("/login");
-    return true;
   };
 
   /**
-   * Get the current session
+   * Get the current session (imperative fetch)
    */
   const getSession = async () => {
-    setLoading(true);
+    // This is a direct fetch, not a mutation. Consider useQuery for reactive session state.
     try {
       const { data, error } = await supabase.auth.getSession();
       if (error) {
         message.error("Could not retrieve session: " + error.message);
-        console.error("Get session error:", error); // Log the error
+        console.error("Get session error:", error);
         return null;
       }
       return data.session;
     } catch (sessionError) {
       message.error("An unexpected error occurred while fetching session.");
-      console.error("Unexpected get session error:", sessionError); // Log the error
+      console.error("Unexpected get session error:", sessionError);
       return null;
-    } finally {
-      setLoading(false);
     }
   };
+
+  // Consolidated loading state from relevant mutations
+  const loading =
+    loginMutation.isPending ||
+    registerMutation.isPending ||
+    logoutMutation.isPending;
 
   return {
     login,
     register,
     loginWithGoogle,
     logout,
-    getSession, // Export getSession
+    getSession,
     loading,
+    isLoadingLogin: loginMutation.isPending,
+    isLoadingRegister: registerMutation.isPending,
+    isLoadingLogout: logoutMutation.isPending,
+    loginError: loginMutation.error,
+    registerError: registerMutation.error,
+    logoutError: logoutMutation.error,
   };
 };

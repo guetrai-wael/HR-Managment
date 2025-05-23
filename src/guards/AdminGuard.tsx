@@ -1,28 +1,29 @@
 import { Navigate } from "react-router-dom";
-import { Spin } from "antd";
 import { useUser, useRole } from "../hooks";
+import QueryBoundary from "../components/common/QueryBoundary";
 
 const AdminGuard = ({ children }: { children: React.ReactNode }) => {
-  const { user, loading: userLoading } = useUser();
+  const { user, authLoading: userAuthLoading } = useUser();
   const { isAdmin, loading: roleLoading } = useRole();
 
-  if (userLoading || roleLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Spin size="large" />
-      </div>
-    );
-  }
+  const isLoading = userAuthLoading || roleLoading;
 
-  if (!user) {
-    return <Navigate to="/login" />;
-  }
-
-  if (!isAdmin) {
-    return <Navigate to="/" />;
-  }
-
-  return <>{children}</>;
+  return (
+    <QueryBoundary
+      isLoading={isLoading}
+      isError={false}
+      error={null}
+      loadingTip="Verifying access..."
+    >
+      {user === null && !isLoading ? (
+        <Navigate to="/login" />
+      ) : user && !isAdmin && !isLoading ? (
+        <Navigate to="/" />
+      ) : user && isAdmin ? (
+        <>{children}</>
+      ) : null}
+    </QueryBoundary>
+  );
 };
 
 export default AdminGuard;

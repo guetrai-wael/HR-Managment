@@ -107,3 +107,90 @@ export interface Application {
   /** The associated UserProfile object of the applicant (populated via joins/relations). */
   profile?: UserProfile | null; // Optional, based on query
 }
+
+/**
+ * Represents the type of leave available in the organization.
+ */
+export interface LeaveType {
+  /** The unique identifier for the leave type (Primary Key). */
+  id: string;
+  /** The name of the leave type (e.g., "Sick Leave", "Vacation"). */
+  name: string;
+  /** An optional description of the leave type. */
+  description?: string | null;
+  /** A color scheme for the leave type, used in the UI (e.g., a hex code or Tailwind color class). */
+  color_scheme?: string | null;
+  /** Indicates if this leave type requires approval (true/false). */
+  requires_approval: boolean;
+  // Future: max_days_per_year, accrual_rate, etc.
+}
+
+/**
+ * Represents a leave request submitted by a user.
+ */
+export interface LeaveRequest {
+  /** The unique identifier for the leave request (Primary Key). */
+  id: string;
+  /** The ID of the user who submitted the request (Foreign Key to UserProfile/AuthUser). */
+  user_id: string;
+  /** The ID of the leave type requested (Foreign Key to LeaveType). */
+  leave_type_id: string;
+  /** The start date of the leave (ISO 8601 date string). */
+  start_date: string;
+  /** The end date of the leave (ISO 8601 date string). */
+  end_date: string;
+  /** An optional reason for the leave request. */
+  reason?: string | null;
+  /** The current status of the leave request (e.g., "pending", "approved", "rejected", "cancelled"). */
+  status: "pending" | "approved" | "rejected" | "cancelled"; // Updated to match DB enum and service layer
+  /** The date and time when the request was created (ISO 8601 timestamp). */
+  created_at: string;
+  /** The date and time when the request was last updated (ISO 8601 timestamp). */
+  updated_at: string;
+
+  // Fields for admin actions - Corrected to match DB schema
+  /** The ID of the admin who reviewed or actioned the request (if applicable). */
+  approved_by?: string | null; // Corrected from admin_reviewer_id
+  /** The date and time when the request was reviewed by admin (if applicable). */
+  approved_at?: string | null; // Corrected from admin_reviewed_at
+  /** The reason for rejection if the request was rejected by admin (if applicable). */
+  comments?: string | null; // Corrected from admin_rejection_reason
+
+  // Optional: For easier data handling in frontend, these can be populated via joins
+  // user_profile?: UserProfile; // Assuming UserProfile is defined elsewhere
+}
+
+/**
+ * Represents a leave request with additional fields for display purposes.
+ */
+export interface LeaveRequestDisplay extends LeaveRequest {
+  /** The name of the employee who submitted the request (optional, for display). */
+  employee_name?: string;
+  /** The avatar URL of the employee (optional, for display). */
+  employee_avatar_url?: string | null;
+  /** The department of the employee (optional, for display). */
+  employee_department?: string; // Or role, as in the image
+  /** The name of the leave type (optional, for display). */
+  leave_type_name?: string;
+  /** The color scheme of the leave type (optional, for display). */
+  leave_type_color_scheme?: string | null;
+  /** The duration of the leave in days (calculated field, optional, for display). */
+  duration_days?: number; // Calculated field
+}
+
+/**
+ * Represents the leave balance for an employee.
+ */
+export interface LeaveBalance {
+  /** The ID of the leave type (Foreign Key to LeaveType). */
+  leave_type_id: string;
+  /** The name of the leave type (for display purposes). */
+  leave_type_name: string;
+  /** The total accrued leave days. */
+  total_accrued: number;
+  /** The total leave days taken. */
+  total_taken: number;
+  /** The remaining leave balance. */
+  remaining_balance: number;
+  // unit: 'days' | 'hours';
+}

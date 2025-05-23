@@ -1,66 +1,75 @@
-import { useState } from "react";
-import { message } from "antd";
+import { useQueryClient } from "@tanstack/react-query";
+// import { message } from "antd"; // Keep for specific messages if needed
 import { Job } from "../types";
-import { createJob, updateJob, deleteJob } from "../services/api/jobService";
-import { handleError } from "../utils/errorHandler";
+import {
+  createJob as apiCreateJob,
+  updateJob as apiUpdateJob,
+  deleteJob as apiDeleteJob,
+} from "../services/api/jobService";
+import { useMutationHandler } from "./useMutationHandler"; // Import the new hook
 
-/**
- * Hook for job CRUD operations with loading state and error handling
- */
-export const useJobActions = () => {
-  const [loading, setLoading] = useState(false);
+export const useJobActions = (departmentIdToFilter?: number | "all") => {
+  const queryClient = useQueryClient();
 
-  const handleCreateJob = async (
-    jobData: Partial<Job>
-  ): Promise<Job | null> => {
-    setLoading(true);
-    try {
-      const newJob = await createJob(jobData);
-      message.success("Job posted successfully!");
-      return newJob;
-    } catch (error) {
-      handleError(error, { userMessage: "Failed to create job" });
-      return null;
-    } finally {
-      setLoading(false);
-    }
+  const getQueryKey = () => {
+    return [
+      "jobs",
+      departmentIdToFilter !== "all" ? departmentIdToFilter : undefined,
+    ];
   };
 
-  const handleUpdateJob = async (
-    id: number,
-    jobData: Partial<Job>
-  ): Promise<Job | null> => {
-    setLoading(true);
-    try {
-      const updatedJob = await updateJob(id, jobData);
-      message.success("Job updated successfully!");
-      return updatedJob;
-    } catch (error) {
-      handleError(error, { userMessage: "Failed to update job" });
-      return null;
-    } finally {
-      setLoading(false);
-    }
-  };
+  // --- Create Job Mutation ---
+  const { mutateAsync: createJob, isPending: isCreatingJob } =
+    useMutationHandler<Job | null, Error, Partial<Job>>({
+      mutationFn: apiCreateJob,
+      queryClient,
+      successMessage: "Job posted successfully!",
+      errorMessagePrefix: "Failed to create job",
+      invalidateQueries: [getQueryKey(), ["jobs"]],
+    });
 
-  const handleDeleteJob = async (id: number): Promise<boolean> => {
-    setLoading(true);
-    try {
-      await deleteJob(id);
-      message.success("Job deleted successfully");
-      return true;
-    } catch (error) {
-      handleError(error, { userMessage: "Failed to delete job" });
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  };
+  // --- Update Job Mutation ---
+  const { mutateAsync: updateJob, isPending: isUpdatingJob } =
+    useMutationHandler<
+      Job | null,
+      Error,
+      { id: number; jobData: Partial<Job> }
+    >({
+      mutationFn: ({ id, jobData }) => apiUpdateJob(id, jobData),
+      queryClient,
+      successMessage: "Job updated successfully!",
+      errorMessagePrefix: "Failed to update job",
+      onSuccess: (_data, variables) => {
+        // Invalidate specific job query in addition to the list
+        queryClient.invalidateQueries({ queryKey: ["job", variables.id] });
+      },
+      invalidateQueries: [getQueryKey(), ["jobs"]],
+    });
+
+  // --- Delete Job Mutation ---
+  const { mutateAsync: deleteJob, isPending: isDeletingJob } =
+    useMutationHandler<boolean, Error, number>({
+      mutationFn: apiDeleteJob,
+      queryClient,
+      // Success message is often handled in the component for more context (e.g., job title)
+      // successMessage: "Job deleted successfully",
+      errorMessagePrefix: "Failed to delete job",
+      onSuccess: (success, jobId) => {
+        if (success) {
+          // message.success(`Job deleted successfully.`); // Example of specific message if needed
+          queryClient.invalidateQueries({ queryKey: ["job", jobId] });
+        }
+      },
+      invalidateQueries: [getQueryKey(), ["jobs"]],
+    });
 
   return {
-    loading,
-    handleCreateJob,
-    handleUpdateJob,
-    handleDeleteJob,
+    createJob,
+    isCreatingJob,
+    updateJob,
+    isUpdatingJob,
+    deleteJob,
+    isDeletingJob,
+    loading: isCreatingJob || isUpdatingJob || isDeletingJob,
   };
 };

@@ -1,11 +1,14 @@
-import React, { useState, useEffect } from "react";
-import { Form, Input, Select, DatePicker, Button, Spin, Alert } from "antd";
-import { useUser, useJobActions } from "../../hooks";
+import React, { useEffect } from "react";
+import { Form, Input, Select, DatePicker } from "antd"; // Removed Button, Spin, Alert
+import { useUser } from "../../hooks";
+import { useJobActions } from "../../hooks/useJobActions";
+import { useQuery } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import { Job, JobFormProps, JobFormValues } from "../../types";
 import { Department } from "../../types/models";
 import { fetchDepartments } from "../../services/api";
-import { handleError } from "../../utils/errorHandler";
+import FormActions from "../common/FormActions";
+import QueryBoundary from "../common/QueryBoundary"; // Added QueryBoundary
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -18,37 +21,21 @@ const JobForm: React.FC<JobFormProps> = ({
 }) => {
   const [form] = Form.useForm();
   const { user } = useUser();
-  const {
-    handleCreateJob,
-    handleUpdateJob,
-    loading: submitting,
-  } = useJobActions();
 
-  // State for departments list and loading/error status
-  const [departments, setDepartments] = useState<Department[]>([]);
-  const [loadingDepartments, setLoadingDepartments] = useState(true);
-  const [departmentError, setDepartmentError] = useState<string | null>(null);
+  const { createJob, isCreatingJob, updateJob, isUpdatingJob } =
+    useJobActions();
+
   const isEditMode = !!jobId;
 
-  // Fetch departments on component mount
-  useEffect(() => {
-    const loadDepartments = async () => {
-      setLoadingDepartments(true);
-      setDepartmentError(null);
-      try {
-        const fetchedDepartments = await fetchDepartments();
-        setDepartments(fetchedDepartments || []);
-      } catch (error) {
-        setDepartmentError("Failed to load departments list.");
-        handleError(error, {
-          userMessage: "Could not load departments for the form.",
-        });
-      } finally {
-        setLoadingDepartments(false);
-      }
-    };
-    loadDepartments();
-  }, []);
+  const {
+    data: departments,
+    isLoading: isLoadingDepartments,
+    error: departmentError,
+    // isFetching: isFetchingDepartments, // if needed for more granular loading
+  } = useQuery<Department[], Error>({
+    queryKey: ["departments"],
+    queryFn: fetchDepartments,
+  });
 
   useEffect(() => {
     if (isEditMode && initialValues) {
@@ -70,42 +57,46 @@ const JobForm: React.FC<JobFormProps> = ({
   };
 
   const handleSubmit = async (values: JobFormValues) => {
-    try {
-      const jobData: Partial<Job> = {
-        title: values.title || "Untitled Job",
-        description: values.description || "No description provided",
-        requirements: values.requirements || "No requirements specified",
-        responsibilities:
-          values.responsibilities || "No responsibilities specified",
-        department_id: values.department_id,
-        location: values.location || "Remote",
-        status: values.status || "Open",
-        salary: values.salary || null,
-        deadline: values.deadline ? values.deadline.format("YYYY-MM-DD") : null,
-      };
+    const jobData: Partial<Job> = {
+      title: values.title || "Untitled Job",
+      description: values.description || "No description provided",
+      requirements: values.requirements || "No requirements specified",
+      responsibilities:
+        values.responsibilities || "No responsibilities specified",
+      department_id: values.department_id,
+      location: values.location || "Remote",
+      // status: values.status || "Open", // Corrected below
+      salary: values.salary || null,
+      deadline: values.deadline ? values.deadline.format("YYYY-MM-DD") : null,
+    };
 
-      // Add posted_by only for new jobs
-      if (!isEditMode && user?.id) {
-        jobData.posted_by = user.id;
-      }
+    // Ensure status is of the correct type
+    if (values.status === "Open" || values.status === "Closed") {
+      jobData.status = values.status;
+    } else {
+      jobData.status = "Open"; // Default to 'Open' if somehow invalid or not provided
+    }
 
-      let success = false;
-      if (isEditMode && jobId) {
-        const updatedJob = await handleUpdateJob(jobId, jobData);
-        success = !!updatedJob;
-      } else {
-        const newJob = await handleCreateJob(jobData);
-        success = !!newJob;
-      }
+    if (!isEditMode && user?.id) {
+      jobData.posted_by = user.id;
+    }
 
-      if (success) {
-        form.resetFields();
-        onSuccess();
-      }
-    } catch (error) {
-      handleError(error, { userMessage: "Failed to save job" });
+    let success = false;
+    if (isEditMode && jobId) {
+      const updatedJobResult = await updateJob({ id: jobId, jobData });
+      success = !!updatedJobResult;
+    } else {
+      const newJobResult = await createJob(jobData);
+      success = !!newJobResult;
+    }
+
+    if (success) {
+      form.resetFields();
+      onSuccess();
     }
   };
+
+  const submitting = isCreatingJob || isUpdatingJob;
 
   return (
     <Form
@@ -114,142 +105,153 @@ const JobForm: React.FC<JobFormProps> = ({
       onFinish={handleSubmit}
       className="job-form-container max-w-full"
     >
-      {loadingDepartments && <Spin tip="Loading departments..." />}
-      {departmentError && !loadingDepartments && (
-        <Alert
-          message={departmentError}
-          type="error"
-          showIcon
-          className="mb-4"
-        />
-      )}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6">
-        {/* Left column */}
-        <div>
-          <Form.Item
-            name="title"
-            label="Job Title"
-            rules={[{ required: true, message: "Please enter the job title" }]}
-          >
-            <Input placeholder="e.g., Senior Frontend Developer" />
-          </Form.Item>
-
-          <Form.Item
-            name="department_id"
-            label="Department"
-            rules={[{ required: true, message: "Please select a department" }]}
-          >
-            <Select
-              placeholder="Select a department"
-              loading={loadingDepartments}
-              disabled={loadingDepartments || !!departmentError}
+      <QueryBoundary
+        isLoading={isLoadingDepartments}
+        isError={!!departmentError}
+        error={departmentError}
+        loadingTip="Loading departments..."
+        errorMessage={
+          departmentError?.message || "Failed to load departments list."
+        }
+      >
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6">
+          {/* Left column */}
+          <div>
+            <Form.Item
+              name="title"
+              label="Job Title"
+              rules={[
+                { required: true, message: "Please enter the job title" },
+              ]}
             >
-              {departments.map((dept) => (
-                <Option key={dept.id} value={dept.id}>
-                  {dept.name}
-                </Option>
-              ))}
-            </Select>
-          </Form.Item>
+              <Input placeholder="e.g., Senior Frontend Developer" />
+            </Form.Item>
 
-          <Form.Item
-            name="location"
-            label="Location"
-            rules={[
-              { required: true, message: "Please enter the job location" },
-            ]}
-          >
-            <Input placeholder="e.g., Remote, New York, Hybrid" />
-          </Form.Item>
+            <Form.Item
+              name="department_id"
+              label="Department"
+              rules={[
+                { required: true, message: "Please select a department" },
+              ]}
+            >
+              <Select
+                placeholder="Select a department"
+                loading={isLoadingDepartments} // Keep this for Select's own loading indicator
+                disabled={isLoadingDepartments || !!departmentError} // Keep disabled logic
+              >
+                {(departments || []).map((dept: Department) => (
+                  <Option key={dept.id} value={dept.id}>
+                    {dept.name}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+
+            <Form.Item
+              name="location"
+              label="Location"
+              rules={[
+                { required: true, message: "Please enter the job location" },
+              ]}
+            >
+              <Input placeholder="e.g., Remote, New York, Hybrid" />
+            </Form.Item>
+          </div>
+
+          {/* Right column */}
+          <div>
+            <Form.Item
+              name="salary"
+              label="Salary Range"
+              rules={[
+                { required: true, message: "Please enter the salary range" },
+              ]}
+            >
+              <Input placeholder="e.g., $80,000 - $100,000" />
+            </Form.Item>
+
+            <Form.Item
+              name="status"
+              label="Status"
+              rules={[{ required: true, message: "Please select a status" }]}
+            >
+              <Select>
+                <Option value="Open">Open</Option>
+                <Option value="Closed">Closed</Option>
+              </Select>
+            </Form.Item>
+
+            <Form.Item
+              name="deadline"
+              label="Application Deadline"
+              rules={[
+                {
+                  required: true,
+                  message: "Please set an application deadline",
+                },
+              ]}
+            >
+              <DatePicker className="w-full" />
+            </Form.Item>
+          </div>
         </div>
 
-        {/* Right column */}
-        <div>
-          <Form.Item
-            name="salary"
-            label="Salary Range"
-            rules={[
-              { required: true, message: "Please enter the salary range" },
-            ]}
-          >
-            <Input placeholder="e.g., $80,000 - $100,000" />
-          </Form.Item>
+        <Form.Item
+          name="description"
+          label="Job Description"
+          rules={[
+            { required: true, message: "Please enter a job description" },
+          ]}
+        >
+          <TextArea
+            rows={4}
+            placeholder="Describe the position and company..."
+          />
+        </Form.Item>
 
-          <Form.Item
-            name="status"
-            label="Status"
-            rules={[{ required: true, message: "Please select a status" }]}
-          >
-            <Select>
-              <Option value="Open">Open</Option>
-              <Option value="Closed">Closed</Option>
-            </Select>
-          </Form.Item>
-
-          <Form.Item
-            name="deadline"
-            label="Application Deadline"
-            rules={[
-              { required: true, message: "Please set an application deadline" },
-            ]}
-          >
-            <DatePicker className="w-full" />
-          </Form.Item>
-        </div>
-      </div>
-
-      <Form.Item
-        name="description"
-        label="Job Description"
-        rules={[{ required: true, message: "Please enter a job description" }]}
-      >
-        <TextArea rows={4} placeholder="Describe the position and company..." />
-      </Form.Item>
-
-      <Form.Item
-        name="requirements"
-        label="Requirements"
-        rules={[{ required: true, message: "Please enter job requirements" }]}
-      >
-        <TextArea
-          rows={4}
-          placeholder="List the requirements, one per line, e.g.:
+        <Form.Item
+          name="requirements"
+          label="Requirements"
+          rules={[{ required: true, message: "Please enter job requirements" }]}
+        >
+          <TextArea
+            rows={4}
+            placeholder="List the requirements, one per line, e.g.:
 - 5+ years of React experience
 - TypeScript knowledge
 - Bachelor's degree or equivalent experience"
-        />
-      </Form.Item>
+          />
+        </Form.Item>
 
-      <Form.Item
-        name="responsibilities"
-        label="Responsibilities"
-        rules={[
-          { required: true, message: "Please enter job responsibilities" },
-        ]}
-      >
-        <TextArea
-          rows={4}
-          placeholder="List the responsibilities, one per line, e.g.:
+        <Form.Item
+          name="responsibilities"
+          label="Responsibilities"
+          rules={[
+            { required: true, message: "Please enter job responsibilities" },
+          ]}
+        >
+          <TextArea
+            rows={4}
+            placeholder="List the responsibilities, one per line, e.g.:
 - Develop and maintain web applications
 - Collaborate with cross-functional teams
 - Code reviews and mentoring junior developers"
-        />
-      </Form.Item>
+          />
+        </Form.Item>
+      </QueryBoundary>
 
-      <div className="form-actions-container flex-col-reverse sm:flex-row sm:justify-end">
-        <Button onClick={handleCancel} className="!w-full sm:!w-auto">
-          Cancel
-        </Button>
-        <Button
-          type="primary"
-          htmlType="submit"
-          loading={submitting}
-          className="!w-full sm:!w-auto"
-          disabled={loadingDepartments || !!departmentError} // Disable submit if departments failed
-        >
-          {isEditMode ? "Update Job" : "Post Job"}
-        </Button>
-      </div>
+      <FormActions
+        primaryActionText={isEditMode ? "Update Job" : "Post Job"}
+        onPrimaryAction={() => form.submit()} // Trigger form submission
+        primaryActionProps={{
+          loading: submitting,
+          // Disable submit if departments are still loading or failed to load, as it's a required field.
+          disabled: isLoadingDepartments || !!departmentError || submitting,
+          htmlType: "submit", // Important for antd form
+        }}
+        secondaryActionText="Cancel"
+        onSecondaryAction={handleCancel}
+      />
     </Form>
   );
 };

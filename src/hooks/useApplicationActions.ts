@@ -1,158 +1,107 @@
-import { useState } from "react";
-import { message } from "antd";
+import { useQueryClient } from "@tanstack/react-query";
+import { message } from "antd"; // Keep for specific messages if needed, though useMutationHandler handles generic ones
 import supabase from "../services/supabaseClient";
 import {
-  updateApplicationStatus,
-  deleteApplication,
-  createApplication,
+  updateApplicationStatus as apiUpdateApplicationStatus,
+  deleteApplication as apiDeleteApplication,
+  createApplication as apiCreateApplication,
 } from "../services/api/applicationService";
-import { Application } from "../types"; // Removed ApplicationStatus import
-import { useErrorHandler } from "./useErrorHandler";
+import { Application, FilterValues } from "../types";
 import { useUser } from "./useUser";
+import { useMutationHandler } from "./useMutationHandler"; // Import the new hook
 
-export const useApplicationActions = () => {
-  const [loading, setLoading] = useState(false);
+// Define interfaces for mutation arguments
+interface SubmitApplicationArgs {
+  applicationData: Partial<Application>;
+  resumeFile?: File; // Use built-in File type
+}
+
+interface UpdateStatusArgs {
+  id: number;
+  status: Application["status"];
+}
+
+export const useApplicationActions = (filters?: FilterValues) => {
+  const queryClient = useQueryClient();
   const { user } = useUser();
-  const { catchError, clearError, error: errorState } = useErrorHandler();
 
-  // Function to handle creating a new application (potentially with file upload)
-  const handleSubmitApplication = async (
-    applicationData: Partial<Application>,
-    resumeFile?: File // Optional file parameter
-  ): Promise<boolean> => {
-    if (!user) {
-      catchError(
-        new Error("User not logged in"),
-        "You must be logged in to apply."
-      ); // Use catchError
-      return false;
-    }
+  const getApplicationsQueryKey = () => {
+    return ["applications", filters || {}];
+  };
 
-    setLoading(true);
-    try {
-      let resumeUrl: string | null = null;
-
-      // --- File Upload Logic ---\
-      // Upload resume if provided
-      if (resumeFile) {
-        // Create a unique file path, e.g., using user ID and timestamp
-        const filePath = `${user.id}/${Date.now()}_${resumeFile.name}`;
-        // console.log(`Uploading resume to: ${filePath}`); // Debug log
-
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from("resumes")
-          .upload(filePath, resumeFile);
-
-        if (uploadError) throw uploadError;
-
-        const { data: publicUrlData } = supabase.storage
-          .from("resumes")
-          .getPublicUrl(uploadData.path);
-
-        // console.log(`Resume uploaded, URL: ${publicUrlData.publicUrl}`); // Debug log
-        resumeUrl = publicUrlData.publicUrl;
-      }
-      // --- End File Upload Logic ---\
-
-      // Add user_id and resume_url before creating the application record
-      const finalData = {
-        ...applicationData,
-        user_id: user.id,
-        resume_url: resumeUrl,
-      }; // Ensure user_id is added
-
-      try {
-        setLoading(true);
-        clearError();
-        const newApplication = await createApplication(finalData);
-
-        if (newApplication) {
-          message.success("Application submitted successfully!");
-          setLoading(false);
-          return true;
-        } else {
-          // Error should have been handled by createApplication's handleError
-          console.error("createApplication returned null or failed silently.");
-          setLoading(false);
-          return false;
+  // --- Submit Application Mutation (Create with File Upload) ---
+  const { mutateAsync: submitApplication, isPending: isSubmitting } =
+    useMutationHandler<boolean, Error, SubmitApplicationArgs>({
+      mutationFn: async ({ applicationData, resumeFile }) => {
+        if (!user) {
+          throw new Error(
+            "User not logged in. You must be logged in to apply."
+          );
         }
-      } catch (error) {
-        // Catch errors from file upload or other unexpected issues in this function
-        console.error("Error in handleSubmitApplication:", error); // Detailed log
-        catchError(
-          error,
-          "An unexpected error occurred while submitting the application."
-        ); // Use catchError
-        setLoading(false);
-        return false;
-      }
-    } catch (error) {
-      // Catch errors from file upload or other unexpected issues in this function
-      console.error("Error in handleSubmitApplication:", error); // Detailed log
-      catchError(
-        error,
-        "An unexpected error occurred while submitting the application."
-      ); // Use catchError
-      setLoading(false);
-      return false;
-    }
-  };
-
-  // Function to handle updating status
-  const handleUpdateStatus = async (
-    id: number,
-    status: Application["status"]
-  ) => {
-    // Use Application['status']
-    setLoading(true);
-    clearError();
-    try {
-      const updated = await updateApplicationStatus(id, status);
-      if (updated) {
-        // console.log(
-        //   `Application ${id} status updated successfully to ${status}.`
-        // );
-        message.success(`Application status updated to ${status}.`);
-        return true; // Status update was successful
-      }
-      // If updated is false, error was handled in service
-      return false; // Indicate failure
-    } catch (error) {
-      catchError(
-        error,
-        "An unexpected error occurred while updating application status."
-      ); // Use catchError
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Function to handle deleting an application
-  const handleDeleteApplication = async (id: number): Promise<boolean> => {
-    setLoading(true);
-    try {
-      const deleted = await deleteApplication(id);
-      if (deleted) {
-        message.success("Application deleted successfully");
+        let resumeUrl: string | null = null;
+        if (resumeFile) {
+          const filePath = `${user.id}/${Date.now()}_${resumeFile.name}`;
+          const { data: uploadData, error: uploadError } =
+            await supabase.storage.from("resumes").upload(filePath, resumeFile);
+          if (uploadError) throw uploadError;
+          const { data: publicUrlData } = supabase.storage
+            .from("resumes")
+            .getPublicUrl(uploadData.path);
+          resumeUrl = publicUrlData.publicUrl;
+        }
+        const finalData = {
+          ...applicationData,
+          user_id: user.id,
+          resume_url: resumeUrl,
+        };
+        const newApplication = await apiCreateApplication(finalData);
+        if (!newApplication) {
+          throw new Error("Application submission failed at the API level.");
+        }
         return true; // Indicate success
-      }
-      // If deleted is false, error was handled in service
-      return false; // Indicate failure
-    } catch (error) {
-      catchError(error, "Failed to delete application."); // Use catchError
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  };
+      },
+      queryClient,
+      successMessage: "Application submitted successfully!",
+      errorMessagePrefix: "Application submission failed",
+      invalidateQueries: [getApplicationsQueryKey(), ["jobApplications"]],
+    });
+
+  // --- Update Application Status Mutation ---
+  const { mutateAsync: updateStatus, isPending: isUpdatingStatus } =
+    useMutationHandler<Application | null, Error, UpdateStatusArgs>({
+      mutationFn: ({ id, status }) => apiUpdateApplicationStatus(id, status),
+      queryClient,
+      // Custom success message to include the status
+      onSuccess: (data, variables) => {
+        if (data) {
+          message.success(`Application status updated to ${variables.status}.`);
+        }
+      },
+      errorMessagePrefix: "Failed to update application status",
+      invalidateQueries: [getApplicationsQueryKey(), ["application"]], // Will be ["application", id] effectively due to how invalidateQueries works with array elements
+      // To be more precise for individual item invalidation, one might need to pass a function or handle it in onSuccess
+      // For now, this will invalidate all queries starting with ["application"].
+      // A more targeted invalidation would be: queryClient.invalidateQueries({ queryKey: ["application", variables.id] });
+      // This can be done in the onSuccess callback if needed, after the generic one.
+    });
+
+  // --- Delete Application Mutation ---
+  const { mutateAsync: deleteApplicationAction, isPending: isDeleting } =
+    useMutationHandler<boolean, Error, number>({
+      mutationFn: apiDeleteApplication,
+      queryClient,
+      successMessage: "Application deleted successfully",
+      errorMessagePrefix: "Failed to delete application",
+      invalidateQueries: [getApplicationsQueryKey()],
+    });
 
   return {
-    loading,
-    error: errorState, // Expose error state from useErrorHandler
-    clearError, // Expose clearError
-    handleSubmitApplication, // Export the create handler
-    handleUpdateStatus,
-    handleDeleteApplication,
+    submitApplication,
+    isSubmitting,
+    updateStatus,
+    isUpdatingStatus,
+    deleteApplicationAction,
+    isDeleting,
+    loading: isSubmitting || isUpdatingStatus || isDeleting,
   };
 };

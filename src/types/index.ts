@@ -61,6 +61,7 @@ export interface InputFieldProps<T extends FieldValues> {
   control: Control<T>; // React Hook Form control object
   error?: FieldError | Merge<FieldError, FieldErrorsImpl<T>>; // RHF error type, now using generic T
   showError: boolean; // Controls error message visibility
+  disabled?: boolean; // Added disabled prop
 }
 
 /** Configuration for a single field within an authentication form. */
@@ -106,6 +107,7 @@ export interface GoogleSignInButtonProps {
   label: string;
   onSuccess?: () => void;
   onError?: (error: Error) => void;
+  disabled?: boolean; // Added disabled prop
 }
 
 /** Props for the main page header component. */

@@ -1,18 +1,20 @@
 import React from "react";
 import { useUser } from "../hooks";
-import { Spin } from "antd";
+import QueryBoundary from "../components/common/QueryBoundary";
 
 const PublicGuard = ({ children }: { children: React.ReactNode }) => {
-  const { loading } = useUser();
+  const { authLoading } = useUser();
 
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Spin size="large" />
-      </div>
-    );
-  }
-  return <>{children}</>;
+  return (
+    <QueryBoundary
+      isLoading={authLoading}
+      isError={false}
+      error={null}
+      loadingTip="Loading page..."
+    >
+      {children}
+    </QueryBoundary>
+  );
 };
 
 export default PublicGuard;

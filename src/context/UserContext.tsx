@@ -1,77 +1,94 @@
-import { createContext, useEffect, useState, ReactNode, useRef } from "react"; // Import useRef
+import { createContext, useEffect, useState, ReactNode, useRef } from "react";
 import supabase from "../services/supabaseClient";
 import { Session, User } from "@supabase/supabase-js";
+import { useQuery } from "@tanstack/react-query";
+import { fetchUserProfile } from "../services/api/userService";
+import { UserProfile } from "../types";
 
 interface UserContextType {
   user: User | null;
   session: Session | null;
-  loading: boolean; // Represents the initial loading state of the context
+  profile: UserProfile | null | undefined;
+  authLoading: boolean;
+  profileLoading: boolean;
+  profileError: Error | null;
 }
 
 export const UserContext = createContext<UserContextType>({
   user: null,
   session: null,
-  loading: true,
+  profile: null,
+  authLoading: true,
+  profileLoading: false,
+  profileError: null,
 });
 
 export const UserProvider = ({ children }: { children: ReactNode }) => {
-  // console.log("UserProvider Effect: Mounting.");
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
-  // Ref to track if initial load is done
-  const initialLoadComplete = useRef(false);
+  const [authLoading, setAuthLoading] = useState(true);
+  const initialAuthLoadComplete = useRef(false);
 
   useEffect(() => {
-    // 1. Initial session check - This determines the *initial* loading state
     supabase.auth
       .getSession()
       .then(({ data: { session: initialSession } }) => {
-        // Set initial state based on this check
         setSession(initialSession);
         setUser(initialSession?.user ?? null);
       })
       .catch((error) => {
-        // Ensure state is null on error
-        console.error("Error getting initial session:", error); // Log the error
+        console.error("Error getting initial session:", error);
         setSession(null);
         setUser(null);
       })
       .finally(() => {
-        // Set loading false ONLY after the initial check is fully complete
-        setLoading(false);
-        initialLoadComplete.current = true;
+        setAuthLoading(false);
+        initialAuthLoadComplete.current = true;
       });
 
-    // 2. Auth state change listener - This updates state *after* initial load
     const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event, currentSession) => {
-        const currentUser = currentSession?.user ?? null;
-        setUser(currentUser);
-        setSession(currentSession);
-
-        // DO NOT set loading state here. The initial load is handled above.
-        // This listener only reacts to subsequent changes (login, logout, token refresh).
-
-        if (
-          (event === "SIGNED_IN" || event === "INITIAL_SESSION") &&
-          currentSession?.user
-        ) {
-          // Optionally, you could trigger a fetch of the user's profile data here if it's not already part of the session
-          // or if you need more profile details than what's in the user object.
-          // Example: fetchUserProfile(currentSession.user.id);
+      async (_event, currentSession) => {
+        if (initialAuthLoadComplete.current || currentSession !== session) {
+          setUser(currentSession?.user ?? null);
+          setSession(currentSession);
         }
       }
     );
 
-    // Cleanup function
     return () => {
       authListener.subscription.unsubscribe();
     };
-  }, []); // Empty dependency array ensures this runs only once on mount
+  }, [session]);
+
+  const {
+    data: profile,
+    isLoading: profileIsLoading,
+    error: profileError,
+    isFetching: profileIsFetching,
+  } = useQuery<UserProfile | null, Error>({
+    queryKey: ["userProfile", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      return fetchUserProfile(user.id);
+    },
+    enabled: !!user?.id && !authLoading,
+    retry: 1,
+    refetchOnWindowFocus: false,
+  });
 
   return (
-    <UserContext.Provider value={{ user, session, loading }}>
+    <UserContext.Provider
+      value={{
+        user,
+        session,
+        profile,
+        authLoading,
+        profileLoading:
+          profileIsLoading ||
+          (!!user?.id && !authLoading && profileIsFetching && !profile), // More robust loading state
+        profileError,
+      }}
+    >
       {children}
     </UserContext.Provider>
   );

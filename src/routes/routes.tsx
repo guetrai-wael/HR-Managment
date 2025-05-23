@@ -1,13 +1,7 @@
 import { Fragment, lazy, Suspense } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { IRouteItem } from "../types";
-import {
-  AuthGuard,
-  GuestGuard,
-  PublicGuard,
-  EmployeeGuard,
-  AdminGuard,
-} from "../guards";
+import { AuthGuard, GuestGuard, PublicGuard, AdminGuard } from "../guards";
 import MainLayout from "../components/Layouts/MainLayout";
 import LoadingFallback from "../components/common/LoadingFallback";
 
@@ -19,6 +13,8 @@ const JobDetails = lazy(() => import("../pages/Jobs/JobDetails"));
 const Applications = lazy(() => import("../pages/Applications/Applications"));
 const Employees = lazy(() => import("../pages/Employees/Employees"));
 const SettingsPage = lazy(() => import("../pages/Profile/SettingsPage"));
+const UserProfilePage = lazy(() => import("../pages/Profile/UserProfilePage"));
+const LeavePage = lazy(() => import("../pages/Leave/LeavePage"));
 
 export const routes: IRouteItem[] = [
   {
@@ -52,13 +48,25 @@ export const routes: IRouteItem[] = [
   {
     path: "/employees",
     element: <Employees />,
-    guard: AdminGuard, // Reverted to AdminGuard
+    guard: AdminGuard,
+    layout: MainLayout,
+  },
+  {
+    path: "/employees/:userId",
+    element: <UserProfilePage />,
+    guard: AdminGuard, // Or AuthGuard if non-admins can view some profiles
     layout: MainLayout,
   },
   {
     path: "/settings",
     element: <SettingsPage />,
     guard: AuthGuard,
+    layout: MainLayout,
+  },
+  {
+    path: "/leaves",
+    element: <LeavePage />,
+    guard: AuthGuard, // All authenticated users (employees, admins) can access /leaves
     layout: MainLayout,
   },
   {

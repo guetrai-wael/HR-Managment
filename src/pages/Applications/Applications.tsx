@@ -28,10 +28,19 @@ const Applications: React.FC = () => {
     isLoading: applicationsLoading,
     error: applicationsError,
   } = useQuery<Application[], Error>({
-    queryKey: ["applications", { ...filters, search: undefined }, isAdmin, user?.id],
+    queryKey: [
+      "applications",
+      { ...filters, search: undefined },
+      isAdmin,
+      user?.id,
+    ],
     queryFn: () => {
       if (!user) return Promise.resolve([]);
-      return fetchApplications({ ...filters, search: undefined }, isAdmin, user.id);
+      return fetchApplications(
+        { ...filters, search: undefined },
+        isAdmin,
+        user.id
+      );
     },
     enabled:
       !!user && !userAuthLoading && !userProfileLoading && !roleCheckLoading,
@@ -40,14 +49,14 @@ const Applications: React.FC = () => {
   // Client-side filtering for search since Supabase has issues with joined table or() queries
   const filteredApplications = React.useMemo(() => {
     if (!applications || !filters.search) return applications;
-    
+
     const searchTerm = filters.search.toLowerCase();
     return applications.filter((app) => {
-      const firstName = app.profile?.first_name?.toLowerCase() || '';
-      const lastName = app.profile?.last_name?.toLowerCase() || '';
-      const email = app.profile?.email?.toLowerCase() || '';
-      const jobTitle = app.job?.title?.toLowerCase() || '';
-      
+      const firstName = app.profile?.first_name?.toLowerCase() || "";
+      const lastName = app.profile?.last_name?.toLowerCase() || "";
+      const email = app.profile?.email?.toLowerCase() || "";
+      const jobTitle = app.job?.title?.toLowerCase() || "";
+
       return (
         firstName.includes(searchTerm) ||
         lastName.includes(searchTerm) ||

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { message } from "antd";
+import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { PageLayout } from "../../components/common";
 import QueryBoundary from "../../components/common/QueryBoundary";
@@ -13,6 +14,7 @@ import { Application, FilterValues } from "../../types";
 import { fetchApplications } from "../../services/api/applicationService";
 
 const Applications: React.FC = () => {
+  const navigate = useNavigate();
   const {
     user,
     authLoading: userAuthLoading,
@@ -26,14 +28,34 @@ const Applications: React.FC = () => {
     isLoading: applicationsLoading,
     error: applicationsError,
   } = useQuery<Application[], Error>({
-    queryKey: ["applications", filters, isAdmin, user?.id],
+    queryKey: ["applications", { ...filters, search: undefined }, isAdmin, user?.id],
     queryFn: () => {
       if (!user) return Promise.resolve([]);
-      return fetchApplications(filters, isAdmin, user.id);
+      return fetchApplications({ ...filters, search: undefined }, isAdmin, user.id);
     },
     enabled:
       !!user && !userAuthLoading && !userProfileLoading && !roleCheckLoading,
   });
+
+  // Client-side filtering for search since Supabase has issues with joined table or() queries
+  const filteredApplications = React.useMemo(() => {
+    if (!applications || !filters.search) return applications;
+    
+    const searchTerm = filters.search.toLowerCase();
+    return applications.filter((app) => {
+      const firstName = app.profile?.first_name?.toLowerCase() || '';
+      const lastName = app.profile?.last_name?.toLowerCase() || '';
+      const email = app.profile?.email?.toLowerCase() || '';
+      const jobTitle = app.job?.title?.toLowerCase() || '';
+      
+      return (
+        firstName.includes(searchTerm) ||
+        lastName.includes(searchTerm) ||
+        email.includes(searchTerm) ||
+        jobTitle.includes(searchTerm)
+      );
+    });
+  }, [applications, filters.search]);
 
   const { updateStatus, isUpdatingStatus } = useApplicationActions(filters);
 
@@ -60,7 +82,7 @@ const Applications: React.FC = () => {
 
   const handleViewProfile = (userId: string) => {
     console.log("Navigate to or show profile for user:", userId);
-    message.info("Profile view not yet implemented.");
+    navigate(`/employees/${userId}`);
   };
 
   const handleUpdateApplicationStatus = async (
@@ -129,7 +151,7 @@ const Applications: React.FC = () => {
         }
       >
         <ApplicationsTable
-          applications={applications || []}
+          applications={filteredApplications || []}
           loading={isUpdatingStatus}
           isAdmin={isAdmin}
           onViewDetails={handleViewDetails}

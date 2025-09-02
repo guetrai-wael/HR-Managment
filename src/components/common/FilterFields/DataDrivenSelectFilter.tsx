@@ -1,6 +1,5 @@
 // src/components/common/FilterFields/DataDrivenSelectFilter.tsx
 import { Form, Select } from "antd";
-import React from "react";
 
 const { Option } = Select;
 

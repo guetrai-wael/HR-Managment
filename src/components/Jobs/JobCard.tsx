@@ -80,7 +80,9 @@ const JobCard: React.FC<JobCardProps> = ({
       daysLeft: diffDays,
     };
   };
-  const { formatted: formattedDeadline, daysLeft } = formatDeadline(deadline);
+  const { formatted: formattedDeadline, daysLeft } = formatDeadline(
+    deadline || undefined
+  );
   const isApplyDisabled = !showApplyButton || isPastDeadline;
   return (
     <div

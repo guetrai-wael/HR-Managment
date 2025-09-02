@@ -8,6 +8,9 @@ import {
   FieldValues,
   Path,
 } from "react-hook-form";
+
+// Export role types and utilities
+export * from "./roles";
 import { Dayjs } from "dayjs"; // Type for Day.js objects used in date pickers
 import { UploadFile } from "antd/es/upload/interface"; // Type for Ant Design Upload component files
 

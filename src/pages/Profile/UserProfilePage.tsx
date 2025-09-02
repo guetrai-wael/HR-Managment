@@ -82,9 +82,10 @@ const UserProfilePage: React.FC = () => {
         error={combinedError}
         loadingTip="Loading user profile..."
       >
+        {" "}
         {user ? (
-          <Row gutter={[24, 24]}>
-            <Col xs={24} md={8} lg={6}>
+          <Row gutter={[16, 24]} className="max-w-full">
+            <Col xs={24} sm={24} md={10} lg={8} xl={6}>
               <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
                 <div className="text-center p-4">
                   <UserAvatar
@@ -94,23 +95,32 @@ const UserProfilePage: React.FC = () => {
                     size={128}
                     className="mb-4 border-4 border-blue-500"
                   />
-                  <Title level={4} className="mb-1">{`${
+                  <Title level={4} className="mb-1 break-words">{`${
                     user.first_name || ""
                   } ${user.last_name || ""}`}</Title>
-                  <Text type="secondary" className="block mb-2">
+                  <Text type="secondary" className="block mb-2 break-all">
                     {user.email}
                   </Text>
                 </div>
-              </Card>
+              </Card>{" "}
             </Col>
-            <Col xs={24} md={16} lg={18}>
+            <Col xs={24} sm={24} md={14} lg={16} xl={18}>
               <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
                 <Title level={5} className="mb-4 border-b pb-2">
                   Personal Information
                 </Title>
                 <Descriptions
                   bordered
-                  column={{ xxl: 2, xl: 2, lg: 1, md: 1, sm: 1, xs: 1 }}
+                  column={{
+                    xxl: 2,
+                    xl: 2,
+                    lg: 2,
+                    md: 1,
+                    sm: 1,
+                    xs: 1,
+                  }}
+                  size="small"
+                  className="responsive-descriptions"
                 >
                   <Descriptions.Item
                     label={
@@ -165,15 +175,22 @@ const UserProfilePage: React.FC = () => {
                     </Descriptions.Item>
                   )}
                 </Descriptions>
-
-                <Divider />
-
+                <Divider />{" "}
                 <Title level={5} className="mb-4 mt-6 border-b pb-2">
                   Professional Details
                 </Title>
                 <Descriptions
                   bordered
-                  column={{ xxl: 2, xl: 2, lg: 1, md: 1, sm: 1, xs: 1 }}
+                  column={{
+                    xxl: 2,
+                    xl: 2,
+                    lg: 2,
+                    md: 1,
+                    sm: 1,
+                    xs: 1,
+                  }}
+                  size="small"
+                  className="responsive-descriptions"
                 >
                   <Descriptions.Item
                     label={
@@ -199,7 +216,6 @@ const UserProfilePage: React.FC = () => {
                     {user.id /* Assuming user.id is the Employee ID */}
                   </Descriptions.Item>
                 </Descriptions>
-
                 {user.bio && (
                   <>
                     <Divider />

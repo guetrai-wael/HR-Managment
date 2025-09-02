@@ -60,17 +60,27 @@ const getStatusTag = (status: LeaveRequestDisplay["status"]) => {
   }
 };
 
-const LeaveHistoryTable: React.FC = () => {
+interface LeaveHistoryTableProps {
+  leaveRequests?: LeaveRequestDisplay[];
+}
+
+const LeaveHistoryTable: React.FC<LeaveHistoryTableProps> = ({
+  leaveRequests: propLeaveRequests,
+}) => {
   const queryClient = useQueryClient();
 
   const {
-    data: leaveRequests,
+    data: fetchedLeaveRequests,
     isLoading,
     error,
   } = useQuery<LeaveRequestDisplay[], Error>({
     queryKey: ["myLeaveRequests"],
     queryFn: leaveService.getMyLeaveRequests,
+    enabled: !propLeaveRequests, // Only fetch if no props provided
   });
+
+  // Use prop data if provided, otherwise use fetched data
+  const leaveRequests = propLeaveRequests || fetchedLeaveRequests;
 
   const cancelMutation = useMutation<LeaveRequestDisplay, Error, string>({
     mutationFn: leaveService.cancelLeaveRequest,

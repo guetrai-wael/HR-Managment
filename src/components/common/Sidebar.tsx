@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from "react";
 import { useUser, useRole } from "../../hooks/index";
+import { formatRoleForDisplay } from "../../types/roles";
 import { useAuth } from "../../hooks/useAuth";
 import { Link, useLocation } from "react-router-dom";
 import {
@@ -17,19 +18,35 @@ import Logo from "../../assets/icons/Logo.svg";
 import UserAvatar from "./UserAvatar"; // Import UserAvatar
 
 const Sidebar: React.FC = () => {
-  const { user } = useUser();
-  const { isAdmin, isEmployee, isJobSeeker } = useRole(); // Add isJobSeeker
+  const { user, profile, profileLoading } = useUser();
+  const { isAdmin, isEmployee, isJobSeeker, roleName } = useRole();
   const location = useLocation();
   const { logout } = useAuth();
+
   const isActive = useCallback(
-    (path: string) => location.pathname === path,
+    (path: string) => {
+      // Special handling for dashboard - both "/" and "/dashboard" should be active
+      if (path === "/dashboard") {
+        return location.pathname === "/" || location.pathname === "/dashboard";
+      }
+      return location.pathname === path;
+    },
     [location]
   );
 
   // Create appropriate navigation items based on user role
   const navItems = useMemo(() => {
     const items = [
-      { icon: <IconHome stroke={1.5} />, text: "Home", path: "/home" },
+      // Dashboard only for admin and employee, not job seekers
+      ...(isAdmin || isEmployee
+        ? [
+            {
+              icon: <IconHome stroke={1.5} />,
+              text: "Dashboard",
+              path: "/dashboard",
+            },
+          ]
+        : []),
       // Show Applications to all authenticated users
       ...(isAdmin || isEmployee || isJobSeeker
         ? [
@@ -49,20 +66,20 @@ const Sidebar: React.FC = () => {
               path: "/employees",
             },
             {
-              icon: <IconCalendarEvent stroke={1.5} />, // Consistent icon
-              text: "Leaves", // Consistent label
-              path: "/leaves", // Points to the consolidated leave page
+              icon: <IconCalendarEvent stroke={1.5} />,
+              text: "Leaves",
+              path: "/leaves",
             },
           ]
         : []),
       // Jobs is visible to all
-      { icon: <IconBriefcase stroke={1.5} />, text: "Jobs", path: "/" },
+      { icon: <IconBriefcase stroke={1.5} />, text: "Jobs", path: "/jobs" },
       // Employee-specific links (if not admin)
-      ...(isEmployee && !isAdmin // Show "My Leaves" only if employee AND not admin (admin already has a "Leaves" link)
+      ...(isEmployee && !isAdmin
         ? [
             {
               icon: <IconCalendarEvent stroke={1.5} />,
-              text: "Leaves", // Consistent label
+              text: "Leaves",
               path: "/leaves",
             },
           ]
@@ -78,25 +95,20 @@ const Sidebar: React.FC = () => {
           ]
         : []),
     ];
-    // Deduplicate navItems based on path to avoid multiple "Leaves" links for admins who are also employees
+
+    // Deduplicate navItems based on path
     const uniqueNavItems = items.reduce((acc, current) => {
       const x = acc.find((item) => item.path === current.path);
       if (!x) {
         return acc.concat([current]);
       }
-      // If admin and employee both have a /leaves path, prioritize the admin one (which is typically earlier in the array)
-      // Or, ensure the logic above correctly assigns only one /leaves path for such users.
-      // The current logic: admin gets a /leaves. If user is employee AND NOT admin, they get a /leaves.
-      // This should prevent duplicates. If an admin is also an employee, the isAdmin block adds the /leaves link,
-      // and the (isEmployee && !isAdmin) block is skipped for that user.
       return acc;
     }, [] as typeof items);
 
     return uniqueNavItems;
   }, [isAdmin, isEmployee, isJobSeeker]);
-
   return (
-    <div className="flex flex-col justify-between w-[242px] h-screen sticky top-0">
+    <div className="flex flex-col justify-between w-52 h-screen sticky top-0">
       {/* Nav Section */}
       <div className="flex flex-col items-start pt-8 gap-6">
         {/* Logo */}
@@ -112,7 +124,7 @@ const Sidebar: React.FC = () => {
             <Link
               key={index}
               to={item.path}
-              className={`flex flex-row items-center p-3 gap-3 w-[226px] h-[40px] rounded-md ${
+              className={`flex flex-row items-center p-3 gap-3 w-full h-[40px] rounded-md ${
                 isActive(item.path)
                   ? "bg-[#F9F5FF]"
                   : "bg-[#FCFCFD] hover:bg-gray-100"
@@ -141,15 +153,14 @@ const Sidebar: React.FC = () => {
         </div>
       </div>
 
-      {/* Footer Section - Settings link is already present and should be visible to all logged-in users by default */}
-      {/* The visibility of the settings link itself is not role-restricted here, but the page it leads to is guarded by EmployeeGuard */}
+      {/* Footer Section */}
       <div className="flex flex-col items-start pb-8 px-2 gap-6 mt-auto">
         {/* Settings Navigation Link */}
-        {user && ( // Show Settings link if user is logged in
+        {user && (
           <div className="flex flex-col items-start w-full">
             <Link
               to="/settings"
-              className={`flex flex-row items-center p-3 gap-3 w-[226px] h-[40px] rounded-md ${
+              className={`flex flex-row items-center p-3 gap-3 w-full h-[40px] rounded-md ${
                 isActive("/settings")
                   ? "bg-[#F9F5FF]"
                   : "bg-[#FCFCFD] hover:bg-gray-100"
@@ -180,32 +191,42 @@ const Sidebar: React.FC = () => {
         {/* Divider */}
         <div className="h-[1px] w-full bg-[#EAECF0]"></div>
 
-        {/* Account - Update to show job seeker role */}
-        <div className="flex flex-row justify-between items-center px-2 w-full">
-          <div className="flex flex-row items-center gap-3">
-            {/* Avatar - Use UserAvatar component */}
+        {/* User Account Section */}
+        <div className="flex flex-row justify-between items-center px-2 w-full gap-2">
+          <div className="flex flex-row items-center gap-3 min-w-0">
+            {/* Avatar */}
             <UserAvatar
-              src={user?.user_metadata?.avatar_url}
+              src={profile?.avatar_url || user?.user_metadata?.avatar_url}
               firstName={
-                user?.user_metadata?.first_name || user?.email?.split("@")[0]
+                profile?.first_name ||
+                user?.user_metadata?.first_name ||
+                user?.email?.split("@")[0]
               }
-              lastName={user?.user_metadata?.last_name}
-              email={user?.email}
+              lastName={profile?.last_name || user?.user_metadata?.last_name}
               size={40}
             />
 
-            {/* User Info - Update role display */}
-            <div className="flex flex-col">
-              <span className="text-sm font-medium text-[#101828]">
-                {user?.email?.split("@")[0] || "User"}
+            {/* User Info */}
+            <div className="flex flex-col min-w-0">
+              <span className="text-sm font-medium text-[#101828] truncate">
+                {profileLoading
+                  ? "Loading..."
+                  : profile?.first_name && profile?.last_name
+                  ? `${profile.first_name} ${profile.last_name}`
+                  : user?.user_metadata?.first_name &&
+                    user?.user_metadata?.last_name
+                  ? `${user.user_metadata.first_name} ${user.user_metadata.last_name}`
+                  : user?.email?.split("@")[0] || "User"}
               </span>
-              <span className="text-sm text-[#667085]">
-                {isAdmin ? "Admin" : isEmployee ? "Employee" : "Job Seeker"}
+              <span className="text-sm text-[#667085] truncate">
+                {profileLoading
+                  ? "Loading role..."
+                  : profile?.position || formatRoleForDisplay(roleName)}
               </span>
             </div>
           </div>
 
-          {/* Logout Button - No changes */}
+          {/* Logout Button */}
           <button
             onClick={() => logout()}
             className="w-[36px] h-[36px] flex items-center justify-center rounded-md hover:bg-gray-100"

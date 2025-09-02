@@ -58,12 +58,8 @@ export const fetchApplications = async (
     if (typeof filters.departmentId === "number") {
       query = query.eq("job.department_id", filters.departmentId);
     }
-    if (filters.search) {
-      const searchTerm = `%${filters.search}%`;
-      query = query.or(
-        `profile.first_name.ilike.${searchTerm},profile.last_name.ilike.${searchTerm},profile.email.ilike.${searchTerm},job.title.ilike.${searchTerm}`
-      );
-    }
+    // Note: Removed complex search for now due to Supabase limitations with joined table or() queries
+    // We'll implement search on the frontend after data is fetched
   }
 
   const { data, error, status } = await query;

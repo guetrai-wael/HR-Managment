@@ -4,6 +4,7 @@ import { MenuOutlined } from "@ant-design/icons";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { useUser, useRole } from "../../hooks";
+import { formatRoleForDisplay } from "../../types/roles";
 import Logo from "../../assets/icons/Logo.svg";
 import {
   IconUserShare,
@@ -18,8 +19,8 @@ import {
 import UserAvatar from "./UserAvatar"; // Import UserAvatar
 
 const MobileMenu: React.FC = () => {
-  const { user } = useUser();
-  const { isAdmin, isEmployee, isJobSeeker } = useRole(); // Add isJobSeeker
+  const { user, profile } = useUser();
+  const { isAdmin, isEmployee, isJobSeeker, roleName } = useRole(); // Add roleName
   const [open, setOpen] = useState(false);
   const location = useLocation();
   const { logout } = useAuth();
@@ -36,8 +37,8 @@ const MobileMenu: React.FC = () => {
   // Get current page title based on path
   const getCurrentPageTitle = () => {
     const path = location.pathname;
-    if (path === "/") return "Jobs";
-    if (path === "/home") return "Home";
+    if (path === "/jobs") return "Jobs";
+    if (path === "/" || path === "/dashboard") return "Dashboard";
     if (path === "/applications")
       return isAdmin ? "Applications Management" : "My Applications";
     if (path === "/employees") return "Employee Management"; // Corrected title
@@ -55,7 +56,16 @@ const MobileMenu: React.FC = () => {
   // Create navigation items based on role
   const navItems = useMemo(() => {
     const items = [
-      { icon: <IconHome stroke={1.5} />, text: "Home", path: "/home" },
+      // Dashboard only for admin and employee, not job seekers
+      ...(isAdmin || isEmployee
+        ? [
+            {
+              icon: <IconHome stroke={1.5} />,
+              text: "Dashboard",
+              path: "/dashboard",
+            },
+          ]
+        : []),
       // Show Applications to all authenticated users (including job seekers)
       ...(isAdmin || isEmployee || isJobSeeker // Add isJobSeeker here
         ? [
@@ -77,7 +87,7 @@ const MobileMenu: React.FC = () => {
           ]
         : []),
       // Jobs is visible to all
-      { icon: <IconBriefcase stroke={1.5} />, text: "Jobs", path: "/" },
+      { icon: <IconBriefcase stroke={1.5} />, text: "Jobs", path: "/jobs" },
       // Other menu items based on role
       ...(isAdmin || isEmployee
         ? [
@@ -163,25 +173,35 @@ const MobileMenu: React.FC = () => {
                 </Link>
               ))}
             </div>
-          </div>
-
+          </div>{" "}
           {/* User Profile - Update to show job seeker role */}
           <div className="border-t border-gray-200 mt-4 pt-4 px-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <UserAvatar
-                  src={user?.user_metadata?.avatar_url}
-                  firstName={user?.email?.split("@")[0]} // Changed from name to firstName
-                  // lastName can be added if available, e.g., user?.user_metadata?.last_name
+                  src={profile?.avatar_url || user?.user_metadata?.avatar_url}
+                  firstName={
+                    profile?.first_name ||
+                    user?.user_metadata?.first_name ||
+                    user?.email?.split("@")[0]
+                  }
+                  lastName={
+                    profile?.last_name || user?.user_metadata?.last_name
+                  }
                   size={40}
                 />
                 {/* User Info - Update role display */}
                 <div className="flex flex-col">
                   <span className="text-sm font-medium text-[#101828]">
-                    {user?.email?.split("@")[0] || "User"}
+                    {profile?.first_name && profile?.last_name
+                      ? `${profile.first_name} ${profile.last_name}`
+                      : user?.user_metadata?.first_name &&
+                        user?.user_metadata?.last_name
+                      ? `${user.user_metadata.first_name} ${user.user_metadata.last_name}`
+                      : user?.email?.split("@")[0] || "User"}
                   </span>
                   <span className="text-sm text-[#667085]">
-                    {isAdmin ? "Admin" : isEmployee ? "Employee" : "Job Seeker"}
+                    {profile?.position || formatRoleForDisplay(roleName)}
                   </span>
                 </div>
               </div>

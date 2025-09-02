@@ -59,17 +59,27 @@ const getStatusTag = (status: LeaveRequestDisplay["status"]) => {
   }
 };
 
-const LeaveManagementTable: React.FC = () => {
+interface LeaveManagementTableProps {
+  leaveRequests?: LeaveRequestDisplay[];
+}
+
+const LeaveManagementTable: React.FC<LeaveManagementTableProps> = ({
+  leaveRequests: propLeaveRequests,
+}) => {
   const queryClient = useQueryClient();
 
   const {
-    data: leaveRequests,
+    data: fetchedLeaveRequests,
     isLoading,
     error: queryError,
   } = useQuery<LeaveRequestDisplay[], Error>({
     queryKey: ["allLeaveRequests"],
     queryFn: leaveService.getAllLeaveRequests,
+    enabled: !propLeaveRequests, // Only fetch if no props provided
   });
+
+  // Use prop data if provided, otherwise use fetched data
+  const leaveRequests = propLeaveRequests || fetchedLeaveRequests;
 
   // Effect to show error message when queryError changes
   useEffect(() => {

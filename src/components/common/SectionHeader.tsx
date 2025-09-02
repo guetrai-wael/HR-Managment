@@ -5,7 +5,7 @@ import { SectionHeaderProps } from "../../types";
 const SectionHeader: React.FC<SectionHeaderProps> = memo(
   ({ title, subtitle, tabs, defaultActiveTab, onTabChange, actionButton }) => {
     const [activeTab, setActiveTab] = useState(
-      defaultActiveTab || tabs[0]?.key
+      defaultActiveTab || tabs?.[0]?.key
     );
 
     const handleTabClick = (key: string) => {
@@ -45,11 +45,11 @@ const SectionHeader: React.FC<SectionHeaderProps> = memo(
 
         <div className="relative w-full">
           <div className="flex flex-row gap-4">
-            {tabs.map((tab) => (
+            {tabs?.map((tab) => (
               <div
                 key={tab.key}
                 className="flex flex-col justify-center items-center cursor-pointer"
-                onClick={() => handleTabClick(tab.key)}
+                onClick={() => handleTabClick(String(tab.key))}
               >
                 <div className="flex flex-row justify-center items-center px-1 pb-4 pt-1">
                   <span

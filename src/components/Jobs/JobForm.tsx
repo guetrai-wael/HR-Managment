@@ -247,7 +247,7 @@ const JobForm: React.FC<JobFormProps> = ({
           loading: submitting,
           // Disable submit if departments are still loading or failed to load, as it's a required field.
           disabled: isLoadingDepartments || !!departmentError || submitting,
-          htmlType: "submit", // Important for antd form
+          // Remove htmlType="submit" to prevent double submission
         }}
         secondaryActionText="Cancel"
         onSecondaryAction={handleCancel}

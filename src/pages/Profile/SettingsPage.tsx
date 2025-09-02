@@ -199,18 +199,13 @@ const SettingsPage: React.FC = () => {
       }
     },
   };
-
   return (
     <PageLayout
       title="Profile Settings"
       subtitle="Manage your personal information and preferences."
     >
-      <div style={{ maxWidth: 800, margin: "0 auto" }}>
-        {" "}
-        {/* Centering content within PageLayout */}
-        <Card>
-          {" "}
-          {/* Removed title from Card as PageLayout handles it */}
+      <div className="settings-container">
+        <Card className="settings-card">
           <QueryBoundary
             isLoading={
               authLoading ||
@@ -225,18 +220,37 @@ const SettingsPage: React.FC = () => {
             {user && (
               <Form form={form} layout="vertical" onFinish={handleFormSubmit}>
                 <Form.Item label="Avatar">
-                  <Row gutter={24} align="middle">
-                    <Col>
-                      <Avatar
-                        size={100}
-                        src={currentAvatarUrl}
-                        icon={!currentAvatarUrl && <UserOutlined />}
-                      />
-                    </Col>
-                    <Col flex="auto">
+                  {" "}
+                  <Row gutter={[32, 16]} className="avatar-upload-row">
+                    <Col
+                      xs={24}
+                      sm={24}
+                      md={8}
+                      lg={6}
+                      xl={5}
+                      className="avatar-col"
+                    >
+                      <div className="avatar-container">
+                        <Avatar
+                          size={{ xs: 100, sm: 120, md: 140, lg: 160, xl: 180 }}
+                          src={currentAvatarUrl}
+                          icon={!currentAvatarUrl && <UserOutlined />}
+                          className="settings-avatar"
+                        />
+                      </div>
+                    </Col>{" "}
+                    <Col
+                      xs={24}
+                      sm={24}
+                      md={16}
+                      lg={18}
+                      xl={19}
+                      className="upload-col"
+                    >
                       <Upload.Dragger
                         {...draggerProps}
                         disabled={isUploadingAvatar || profileIsFetching}
+                        className="settings-upload-dragger"
                       >
                         <p className="ant-upload-drag-icon">
                           <InboxOutlined />
@@ -250,71 +264,89 @@ const SettingsPage: React.FC = () => {
                         </p>
                       </Upload.Dragger>
                     </Col>
-                  </Row>
-                </Form.Item>
-
-                <Form.Item
-                  name="first_name"
-                  label="First Name"
-                  rules={[
-                    {
-                      required: true,
-                      message: "Please input your first name!",
-                    },
-                  ]}
-                >
-                  <Input disabled={profileIsFetching || isSavingProfile} />
-                </Form.Item>
-
-                <Form.Item
-                  name="last_name"
-                  label="Last Name"
-                  rules={[
-                    { required: true, message: "Please input your last name!" },
-                  ]}
-                >
-                  <Input disabled={profileIsFetching || isSavingProfile} />
-                </Form.Item>
-
-                <Form.Item name="phone" label="Phone Number">
-                  <Input disabled={profileIsFetching || isSavingProfile} />
-                </Form.Item>
-
+                  </Row>{" "}
+                </Form.Item>{" "}
+                <Row gutter={[24, 0]}>
+                  <Col xs={24} sm={24} md={12}>
+                    <Form.Item
+                      name="first_name"
+                      label="First Name"
+                      rules={[
+                        {
+                          required: true,
+                          message: "Please input your first name!",
+                        },
+                      ]}
+                    >
+                      <Input
+                        disabled={profileIsFetching || isSavingProfile}
+                        className="settings-input"
+                      />
+                    </Form.Item>
+                  </Col>
+                  <Col xs={24} sm={24} md={12}>
+                    <Form.Item
+                      name="last_name"
+                      label="Last Name"
+                      rules={[
+                        {
+                          required: true,
+                          message: "Please input your last name!",
+                        },
+                      ]}
+                    >
+                      <Input
+                        disabled={profileIsFetching || isSavingProfile}
+                        className="settings-input"
+                      />
+                    </Form.Item>
+                  </Col>{" "}
+                </Row>
+                <Row gutter={[24, 0]}>
+                  <Col xs={24} sm={24} md={12}>
+                    <Form.Item name="phone" label="Phone Number">
+                      <Input
+                        disabled={profileIsFetching || isSavingProfile}
+                        className="settings-input"
+                      />
+                    </Form.Item>
+                  </Col>
+                  <Col xs={24} sm={24} md={12}>
+                    <Form.Item label="Email">
+                      <Input
+                        value={user?.email || ""}
+                        readOnly
+                        className="settings-input settings-readonly"
+                      />
+                    </Form.Item>
+                  </Col>
+                </Row>{" "}
                 <Form.Item name="physical_address" label="Physical Address">
                   <Input.TextArea
                     rows={3}
                     disabled={profileIsFetching || isSavingProfile}
+                    className="settings-textarea"
                   />
                 </Form.Item>
-
                 <Form.Item name="bio" label="Bio">
                   <Input.TextArea
                     rows={4}
                     disabled={profileIsFetching || isSavingProfile}
+                    className="settings-textarea"
                   />
                 </Form.Item>
-
-                <Form.Item label="Email">
-                  <Input
-                    value={user?.email || ""}
-                    readOnly
-                    style={{
-                      backgroundColor: "#f5f5f5",
-                      cursor: "not-allowed",
-                    }}
-                  />
-                </Form.Item>
-
-                <Form.Item>
+                <Form.Item className="settings-submit-container">
                   <Button
                     type="primary"
                     htmlType="submit"
                     loading={isSavingProfile}
                     disabled={profileIsFetching}
+                    className="settings-submit-btn"
+                    size="large"
                   >
                     Save Changes
                   </Button>
-                </Form.Item>
+                </Form.Item>{" "}
               </Form>
             )}
           </QueryBoundary>

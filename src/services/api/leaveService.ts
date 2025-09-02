@@ -37,7 +37,7 @@ export const leaveService = {
   },
 
   /**
-   * Creates a new leave request.
+   * Creates a new leave request with balance validation.
    */
   async createLeaveRequest(
     requestData: Omit<
@@ -57,10 +57,27 @@ export const leaveService = {
     if (!userId) {
       throw new Error("User not authenticated to create leave request.");
     }
+
+    // Calculate the number of days requested
+    const startDate = new Date(requestData.start_date);
+    const endDate = new Date(requestData.end_date);
+    const daysRequested =
+      Math.ceil(
+        (endDate.getTime() - startDate.getTime()) / (1000 * 3600 * 24)
+      ) + 1;
+
+    // Get current leave balance
+    const currentBalance = await this.getMyLeaveBalance();
+
+    // Check if user has enough balance
+    if (daysRequested > currentBalance) {
+      throw new Error(
+        `Insufficient leave balance. You requested ${daysRequested} days but only have ${currentBalance} days available.`
+      );
+    }
+
     // Ensure requestData does not contain fields that should not be set by client
     const cleanRequestData = { ...requestData };
-    // delete (cleanRequestData as any).user_id; // user_id is set by service
-    // delete (cleanRequestData as any).status; // status defaults in DB
 
     const { data, error } = await supabase
       .from("leave_requests")

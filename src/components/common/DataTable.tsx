@@ -1,4 +1,3 @@
-import React from "react";
 import { Table, Empty } from "antd";
 import { TableProps } from "antd/es/table";
 

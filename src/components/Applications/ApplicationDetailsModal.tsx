@@ -20,6 +20,7 @@ interface ApplicationDetailsModalProps {
   isAdmin: boolean;
   onClose: () => void;
   onViewResume?: (url: string | null) => void;
+  onViewProfile?: (userId: string) => void;
 }
 
 /**
@@ -31,6 +32,7 @@ const ApplicationDetailsModal: React.FC<ApplicationDetailsModalProps> = ({
   isAdmin,
   onClose,
   onViewResume,
+  onViewProfile,
 }) => {
   const navigate = useNavigate(); // Added useNavigate hook
 
@@ -84,8 +86,10 @@ const ApplicationDetailsModal: React.FC<ApplicationDetailsModalProps> = ({
                       type="link"
                       icon={<UserOutlined />}
                       onClick={() =>
-                        navigate(`/employees/${application.user_id}`)
-                      } // Updated onClick to navigate
+                        onViewProfile
+                          ? onViewProfile(application.user_id)
+                          : navigate(`/employees/${application.user_id}`)
+                      }
                       className="p-0 ml-2"
                     >
                       View Profile

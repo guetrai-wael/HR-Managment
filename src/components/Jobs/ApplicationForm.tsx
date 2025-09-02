@@ -115,7 +115,7 @@ const ApplicationForm: React.FC<ApplicationFormProps> = ({
           onPrimaryAction={() => form.submit()}
           primaryActionProps={{
             loading: isSubmitting,
-            htmlType: "submit",
+            // Remove htmlType="submit" to prevent double submission
           }}
           secondaryActionText="Cancel"
           onSecondaryAction={onCancel}

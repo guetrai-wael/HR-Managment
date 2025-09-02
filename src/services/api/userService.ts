@@ -12,8 +12,12 @@ export interface EmployeeDataForUI extends UserProfile {
   department_name?: string;
 }
 
-const EMPLOYEE_ROLE_ID = 2;
-const JOB_SEEKER_ROLE_ID = 3;
+// Import role constants from centralized location
+import { ROLE_IDS } from "../../types/roles";
+
+// Use centralized role constants instead of local ones
+const EMPLOYEE_ROLE_ID = ROLE_IDS.EMPLOYEE;
+const JOB_SEEKER_ROLE_ID = ROLE_IDS.JOB_SEEKER;
 
 // --- Refactored for React Query: Returns updated profile or throws error ---
 export const updateUserProfile = async (

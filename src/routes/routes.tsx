@@ -8,6 +8,7 @@ import LoadingFallback from "../components/common/LoadingFallback";
 // Lazy load pages
 const Login = lazy(() => import("../pages/Auth/Login"));
 const Signup = lazy(() => import("../pages/Auth/Signup"));
+const Dashboard = lazy(() => import("../pages/Dashboard/Dashboard"));
 const Jobs = lazy(() => import("../pages/Jobs/Jobs"));
 const JobDetails = lazy(() => import("../pages/Jobs/JobDetails"));
 const Applications = lazy(() => import("../pages/Applications/Applications"));
@@ -29,6 +30,12 @@ export const routes: IRouteItem[] = [
   },
   {
     path: "/",
+    element: <Dashboard />,
+    guard: AuthGuard,
+    layout: MainLayout,
+  },
+  {
+    path: "/jobs",
     element: <Jobs />,
     guard: PublicGuard,
     layout: MainLayout,
@@ -55,6 +62,12 @@ export const routes: IRouteItem[] = [
     path: "/employees/:userId",
     element: <UserProfilePage />,
     guard: AdminGuard, // Or AuthGuard if non-admins can view some profiles
+    layout: MainLayout,
+  },
+  {
+    path: "/profile",
+    element: <UserProfilePage />,
+    guard: AuthGuard, // All authenticated users can view their own profile
     layout: MainLayout,
   },
   {

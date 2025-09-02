@@ -87,6 +87,15 @@ const LeaveRequestForm: React.FC<LeaveRequestFormProps> = ({
     queryFn: leaveService.getLeaveTypes,
   });
 
+  // Fetch current leave balance
+  const { data: currentBalance, isLoading: isLoadingBalance } = useQuery<
+    number,
+    Error
+  >({
+    queryKey: ["myLeaveBalance"],
+    queryFn: leaveService.getMyLeaveBalance,
+  });
+
   const {
     control,
     handleSubmit,
@@ -160,12 +169,96 @@ const LeaveRequestForm: React.FC<LeaveRequestFormProps> = ({
     return current && current < startDate.startOf("day");
   };
 
+  // Calculate days requested based on selected dates
+  const calculateDaysRequested = () => {
+    const startDate = watch("start_date");
+    const endDate = watch("end_date");
+
+    if (
+      !startDate ||
+      !endDate ||
+      !dayjs.isDayjs(startDate) ||
+      !dayjs.isDayjs(endDate)
+    ) {
+      return 0;
+    }
+
+    return endDate.diff(startDate, "days") + 1;
+  };
+
+  const daysRequested = calculateDaysRequested();
+  const hasInsufficientBalance =
+    currentBalance !== undefined && daysRequested > currentBalance;
+
   return (
     <Card
       title={<Title level={4}>Submit Leave Request</Title>}
       variant="borderless" // Changed from bordered={false}
       style={{ boxShadow: "0 0 10px rgba(0,0,0,0.1)" }}
     >
+      {/* Leave Balance Display */}
+      <div
+        style={{
+          marginBottom: "16px",
+          padding: "12px",
+          backgroundColor: "#f6f8fa",
+          borderRadius: "6px",
+          border: "1px solid #e1e5e9",
+        }}
+      >
+        <strong>Current Leave Balance: </strong>
+        {isLoadingBalance ? (
+          "Loading..."
+        ) : (
+          <span
+            style={{
+              color:
+                currentBalance !== undefined && currentBalance > 0
+                  ? "#52c41a"
+                  : "#ff4d4f",
+              fontWeight: "bold",
+            }}
+          >
+            {currentBalance !== undefined
+              ? `${currentBalance} days`
+              : "Unable to load"}
+          </span>
+        )}
+      </div>
+
+      {/* Days Requested Warning */}
+      {daysRequested > 0 && (
+        <div
+          style={{
+            marginBottom: "16px",
+            padding: "12px",
+            backgroundColor: hasInsufficientBalance ? "#fff2f0" : "#f6ffed",
+            borderRadius: "6px",
+            border: `1px solid ${
+              hasInsufficientBalance ? "#ffccc7" : "#b7eb8f"
+            }`,
+          }}
+        >
+          <strong>Days Requested: </strong>
+          <span
+            style={{
+              color: hasInsufficientBalance ? "#ff4d4f" : "#52c41a",
+              fontWeight: "bold",
+            }}
+          >
+            {daysRequested} days
+          </span>
+          {hasInsufficientBalance && (
+            <div
+              style={{ color: "#ff4d4f", marginTop: "4px", fontSize: "14px" }}
+            >
+              ⚠️ Insufficient balance! You need{" "}
+              {daysRequested - (currentBalance || 0)} more days.
+            </div>
+          )}
+        </div>
+      )}
+
       <Form layout="vertical" onFinish={handleSubmit(onSubmit)}>
         <Form.Item
           label="Leave Type"
@@ -261,8 +354,17 @@ const LeaveRequestForm: React.FC<LeaveRequestFormProps> = ({
             type="primary"
             htmlType="submit"
             loading={createLeaveMutation.isPending}
+            disabled={
+              createLeaveMutation.isPending ||
+              hasInsufficientBalance ||
+              isLoadingBalance
+            }
           >
-            {createLeaveMutation.isPending ? "Submitting..." : "Submit Request"}
+            {createLeaveMutation.isPending
+              ? "Submitting..."
+              : hasInsufficientBalance
+              ? "Insufficient Balance"
+              : "Submit Request"}
           </Button>
         </Form.Item>
       </Form>

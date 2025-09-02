@@ -15,8 +15,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   return (
     <QueryBoundary
       isLoading={authLoading}
-      isError={false} // useUser doesn't directly expose an error object here
-      error={null} // useUser doesn't directly expose an error object here
+      isError={false}
+      error={null}
       loadingTip="Loading user information..."
     >
       {!user ? (

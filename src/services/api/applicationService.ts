@@ -111,9 +111,13 @@ export const createApplication = async (
   if (!applicationData.job_id || !applicationData.user_id) {
     throw new Error("Missing job_id or user_id for application creation.");
   }
-  
-  // Extract only the fields needed for insertion, excluding computed fields
-  const { id: _id, job: _job, profile: _profile, ...insertData } = applicationData;
+   
+  const {
+    id: _id,
+    job: _job,
+    profile: _profile,
+    ...insertData
+  } = applicationData;
 
   const { data, error } = await supabase
     .from("applications")

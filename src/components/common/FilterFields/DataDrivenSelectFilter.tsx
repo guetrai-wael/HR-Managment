@@ -17,7 +17,7 @@ interface DataDrivenSelectFilterProps<T = unknown> {
   allowClear?: boolean;
 }
 
-export const DataDrivenSelectFilter = <T = unknown>({
+export const DataDrivenSelectFilter = <T = unknown,>({
   name,
   label,
   placeholder,

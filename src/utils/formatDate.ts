@@ -16,7 +16,6 @@ export const formatDate = (
 
     // Check if the date is valid
     if (isNaN(date.getTime())) {
-      console.warn("formatDate received an invalid date input:", dateInput);
       return ""; // Return empty string for invalid dates
     }
 
@@ -26,8 +25,7 @@ export const formatDate = (
       month: "long",
       day: "numeric",
     });
-  } catch (error) {
-    console.error("Error formatting date:", dateInput, error);
+  } catch (_error) {
     return ""; // Return empty string on error
   }
 };

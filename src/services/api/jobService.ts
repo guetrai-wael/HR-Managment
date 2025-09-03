@@ -55,7 +55,7 @@ export const getJobById = async (id: string | number): Promise<Job | null> => {
  * Create a new job
  */
 export const createJob = async (jobData: Partial<Job>): Promise<Job | null> => {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+   
   const { id: _id, department: _deptObj, ...insertData } = jobData;
 
   const { data, error } = await supabase
@@ -83,7 +83,7 @@ export const updateJob = async (
   id: number,
   jobData: Partial<Job>
 ): Promise<Job | null> => {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+   
   const { id: _jobId, department: _deptObj, ...updateData } = jobData;
   const { data, error } = await supabase
     .from("jobs")

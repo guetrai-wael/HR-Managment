@@ -3,7 +3,7 @@ import { Form, Select } from "antd";
 
 const { Option } = Select;
 
-interface DataDrivenSelectFilterProps<T extends Record<string, any>> {
+interface DataDrivenSelectFilterProps<T = unknown> {
   name: string;
   label: string;
   placeholder: string;
@@ -17,7 +17,7 @@ interface DataDrivenSelectFilterProps<T extends Record<string, any>> {
   allowClear?: boolean;
 }
 
-export const DataDrivenSelectFilter = <T extends Record<string, any>>({
+export const DataDrivenSelectFilter = <T = unknown>({
   name,
   label,
   placeholder,

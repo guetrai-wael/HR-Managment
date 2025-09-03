@@ -1,6 +1,7 @@
 import supabase from "../supabaseClient";
-// import { handleError } from "../../utils/errorHandler"; // To be removed
 import { UserProfile } from "../../types/models";
+import { ROLE_IDS } from "../../types/roles";
+import { logError, logInfo, logDebug } from "../../utils/logger";
 
 interface EmployeePromotionData {
   position: string;
@@ -12,10 +13,7 @@ export interface EmployeeDataForUI extends UserProfile {
   department_name?: string;
 }
 
-// Import role constants from centralized location
-import { ROLE_IDS } from "../../types/roles";
-
-// Use centralized role constants instead of local ones
+// Use centralized role constants
 const EMPLOYEE_ROLE_ID = ROLE_IDS.EMPLOYEE;
 const JOB_SEEKER_ROLE_ID = ROLE_IDS.JOB_SEEKER;
 
@@ -24,12 +22,8 @@ export const updateUserProfile = async (
   userId: string,
   profileData: Partial<UserProfile> & { email?: string } // email is needed for insert
 ): Promise<UserProfile> => {
-  console.log(
-    "[userService] updateUserProfile CALLED. userId:",
-    userId,
-    "profileData:",
-    profileData
-  );
+  logDebug("userService", "updateUserProfile called", { userId, profileData });
+  
   // Check if profile exists to determine insert or update
   const { data: existingProfile, error: fetchError } = await supabase
     .from("profiles")
@@ -39,7 +33,7 @@ export const updateUserProfile = async (
 
   if (fetchError && fetchError.code !== "PGRST116") {
     // PGRST116 means no rows found, which is fine for insert
-    console.error("[userService] Error fetching existing profile:", fetchError);
+    logError("userService", "Error fetching existing profile", fetchError);
     throw fetchError;
   }
 
@@ -50,36 +44,37 @@ export const updateUserProfile = async (
 
   if (!existingProfile) {
     // INSERT new profile
-    console.log(
-      "[userService] Attempting to CREATE new profile for userId:",
-      userId
-    );
+    logInfo("userService", "Creating new profile", { userId });
+    
     if (!profileData.email) {
-      console.error("[userService] Email is required to create a new profile.");
-      throw new Error("Email is required to create a new profile.");
+      const errorMsg = "Email is required to create a new profile";
+      logError("userService", errorMsg);
+      throw new Error(errorMsg);
     }
+    
     const insertPayload = {
       ...payload,
       id: userId, // Set the id for insert
       email: profileData.email, // Ensure email is part of the payload
     };
+    
     const { data, error } = await supabase
       .from("profiles")
       .insert(insertPayload)
       .select()
       .single();
+      
     if (error) {
-      console.error("[userService] Supabase insert error:", error);
+      logError("userService", "Supabase insert error", error);
       throw error;
     }
-    console.log("[userService] Profile CREATED:", data);
+    
+    logInfo("userService", "Profile created successfully", { userId });
     return data as UserProfile;
   } else {
     // UPDATE existing profile
-    console.log(
-      "[userService] Attempting to UPDATE existing profile for userId:",
-      userId
-    );
+    logDebug("userService", "Updating existing profile", { userId });
+    
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { email, id, ...updatePayload } = payload; // email and id should not be in update payload generally
     const { data, error } = await supabase
@@ -89,10 +84,10 @@ export const updateUserProfile = async (
       .select()
       .single();
     if (error) {
-      console.error("[userService] Supabase update error:", error);
+      logError("userService", "Supabase update error", error);
       throw error;
     }
-    console.log("[userService] Profile UPDATED:", data);
+    logInfo("userService", "Profile updated successfully", { userId });
     return data as UserProfile;
   }
 };
@@ -102,7 +97,8 @@ export const updateUserAvatar = async (
   userId: string,
   avatarFile: File
 ): Promise<UserProfile> => {
-  console.log("[userService] updateUserAvatar CALLED. userId:", userId);
+  logDebug("userService", "updateUserAvatar called", { userId });
+  
   const fileName = `public/${userId}/${Date.now()}_${avatarFile.name}`;
   const { error: uploadError } = await supabase.storage
     .from("avatars")
@@ -110,8 +106,9 @@ export const updateUserAvatar = async (
       cacheControl: "3600",
       upsert: true,
     });
+    
   if (uploadError) {
-    console.error("[userService] Avatar upload error:", uploadError);
+    logError("userService", "Avatar upload error", uploadError);
     throw uploadError;
   }
 
@@ -120,8 +117,9 @@ export const updateUserAvatar = async (
     .getPublicUrl(fileName);
 
   if (!publicUrlData) {
-    console.error("[userService] Could not get public URL for avatar.");
-    throw new Error("Could not get public URL for avatar.");
+    const errorMsg = "Could not get public URL for avatar";
+    logError("userService", errorMsg);
+    throw new Error(errorMsg);
   }
   const avatar_url = publicUrlData.publicUrl;
 

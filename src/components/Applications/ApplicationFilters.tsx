@@ -2,8 +2,8 @@ import { useEffect } from "react";
 import { Form, DatePicker, Button } from "antd";
 // Removed Input, Select, Drawer, FilterOutlined, SearchOutlined, ClearOutlined
 import { useQuery } from "@tanstack/react-query";
-import { fetchJobs } from "../../services/api/jobService";
-import { fetchDepartments } from "../../services/api/departmentService";
+import { jobService } from "../../services/api/recruitment/jobService";
+import { departmentService } from "../../services/api/admin/departmentService";
 import { Job, FilterValues } from "../../types";
 import { Department } from "../../types/models";
 import dayjs, { Dayjs } from "dayjs";
@@ -11,7 +11,6 @@ import {
   SearchFilterInput,
   SimpleSelectFilter,
   DataDrivenSelectFilter,
-  ResetFilterButton,
   MobileFilterWrapper,
 } from "../common/FilterFields"; // Import new components
 
@@ -48,7 +47,7 @@ const ApplicationFilters: React.FC<ApplicationFiltersProps> = ({
     isLoading: isLoadingJobs,
   } = useQuery<Job[], Error>({
     queryKey: ["jobsListForFilters"],
-    queryFn: () => fetchJobs(),
+    queryFn: () => jobService.getAll(),
   });
 
   const {
@@ -57,7 +56,7 @@ const ApplicationFilters: React.FC<ApplicationFiltersProps> = ({
     isLoading: isLoadingDepartments,
   } = useQuery<Department[], Error>({
     queryKey: ["departmentsListForFilters"],
-    queryFn: () => fetchDepartments(),
+    queryFn: () => departmentService.getAll(),
     enabled: isAdmin,
   });
 
@@ -129,11 +128,6 @@ const ApplicationFilters: React.FC<ApplicationFiltersProps> = ({
     onFilterChange(formattedFilters);
   };
 
-  const handleReset = () => {
-    form.resetFields();
-    onFilterChange({}); // Notify parent that filters are reset
-  };
-
   const statusOptions = [
     { value: "pending", label: "Pending" },
     { value: "interviewing", label: "Interviewing" },
@@ -150,38 +144,36 @@ const ApplicationFilters: React.FC<ApplicationFiltersProps> = ({
         initialValues={initialFormValues}
         className="flex flex-wrap gap-4 items-center"
       >
-        <SearchFilterInput
-          name="search"
-          label="Search"
-          placeholder="Applicant, email, job..."
-          disabled={disabled}
+        {isAdmin && (
+          <SearchFilterInput
+            name="search"
+            label="Search Applicants"
+            placeholder="Search by name or email..."
+            disabled={disabled}
+          />
+        )}
+
+        <DataDrivenSelectFilter
+          name="jobId"
+          label="Job Title"
+          placeholder="All Jobs"
+          data={jobs}
+          valueKey="id"
+          labelKey="title"
+          loading={isLoadingJobs}
+          disabled={disabled || !!jobsError}
         />
 
-        {isAdmin && (
-          <DataDrivenSelectFilter
-            name="jobId"
-            label="Job Title"
-            placeholder="All Jobs"
-            data={jobs}
-            valueKey="id"
-            labelKey="title"
-            loading={isLoadingJobs}
-            disabled={disabled || !!jobsError}
-          />
-        )}
-
-        {isAdmin && (
-          <DataDrivenSelectFilter
-            name="departmentId"
-            label="Department"
-            placeholder="All Departments"
-            data={departments}
-            valueKey="id"
-            labelKey="name"
-            loading={isLoadingDepartments}
-            disabled={disabled || !!departmentsError}
-          />
-        )}
+        <DataDrivenSelectFilter
+          name="departmentId"
+          label="Department"
+          placeholder="All Departments"
+          data={departments}
+          valueKey="id"
+          labelKey="name"
+          loading={isLoadingDepartments}
+          disabled={disabled || !!departmentsError}
+        />
 
         <SimpleSelectFilter
           name="status"
@@ -198,8 +190,6 @@ const ApplicationFilters: React.FC<ApplicationFiltersProps> = ({
         >
           <RangePicker className="w-full" disabled={disabled} />
         </Form.Item>
-
-        <ResetFilterButton onClick={handleReset} disabled={disabled} />
       </Form>
     </div>
   );
@@ -215,41 +205,39 @@ const ApplicationFilters: React.FC<ApplicationFiltersProps> = ({
       onValuesChange={handleFormChange}
       initialValues={initialFormValues}
     >
-      <SearchFilterInput
-        name="search"
-        label="Search"
-        placeholder="Applicant, email, job..."
-        disabled={disabled}
+      {isAdmin && (
+        <SearchFilterInput
+          name="search"
+          label="Search Applicants"
+          placeholder="Search by name or email..."
+          disabled={disabled}
+          className="w-full" // Ensure full width in drawer
+        />
+      )}
+
+      <DataDrivenSelectFilter
+        name="jobId"
+        label="Job Title"
+        placeholder="All Jobs"
+        data={jobs}
+        valueKey="id"
+        labelKey="title"
+        loading={isLoadingJobs}
+        disabled={disabled || !!jobsError}
         className="w-full" // Ensure full width in drawer
       />
 
-      {isAdmin && (
-        <DataDrivenSelectFilter
-          name="jobId"
-          label="Job Title"
-          placeholder="All Jobs"
-          data={jobs}
-          valueKey="id"
-          labelKey="title"
-          loading={isLoadingJobs}
-          disabled={disabled || !!jobsError}
-          className="w-full" // Ensure full width in drawer
-        />
-      )}
-
-      {isAdmin && (
-        <DataDrivenSelectFilter
-          name="departmentId"
-          label="Department"
-          placeholder="All Departments"
-          data={departments}
-          valueKey="id"
-          labelKey="name"
-          loading={isLoadingDepartments}
-          disabled={disabled || !!departmentsError}
-          className="w-full" // Ensure full width in drawer
-        />
-      )}
+      <DataDrivenSelectFilter
+        name="departmentId"
+        label="Department"
+        placeholder="All Departments"
+        data={departments}
+        valueKey="id"
+        labelKey="name"
+        loading={isLoadingDepartments}
+        disabled={disabled || !!departmentsError}
+        className="w-full" // Ensure full width in drawer
+      />
 
       <SimpleSelectFilter
         name="status"
@@ -264,11 +252,6 @@ const ApplicationFilters: React.FC<ApplicationFiltersProps> = ({
         <RangePicker className="w-full" disabled={disabled} />
       </Form.Item>
 
-      <ResetFilterButton
-        onClick={handleReset}
-        disabled={disabled}
-        isDrawerButton // Styles for drawer
-      />
       <Button
         type="primary"
         onClick={closeDrawer} // Use closeDrawer from props

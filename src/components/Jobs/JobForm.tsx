@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import { Job, JobFormProps, JobFormValues } from "../../types";
 import { Department } from "../../types/models";
-import { fetchDepartments } from "../../services/api";
+import { departmentService } from "../../services/api";
 import FormActions from "../common/FormActions";
 import QueryBoundary from "../common/QueryBoundary"; // Added QueryBoundary
 
@@ -34,7 +34,7 @@ const JobForm: React.FC<JobFormProps> = ({
     // isFetching: isFetchingDepartments, // if needed for more granular loading
   } = useQuery<Department[], Error>({
     queryKey: ["departments"],
-    queryFn: fetchDepartments,
+    queryFn: departmentService.getAll,
   });
 
   useEffect(() => {
@@ -65,17 +65,17 @@ const JobForm: React.FC<JobFormProps> = ({
         values.responsibilities || "No responsibilities specified",
       department_id: values.department_id,
       location: values.location || "Remote",
-      // status: values.status || "Open", // Corrected below
       salary: values.salary || null,
       deadline: values.deadline ? values.deadline.format("YYYY-MM-DD") : null,
     };
 
-    // Ensure status is of the correct type
-    if (values.status === "Open" || values.status === "Closed") {
-      jobData.status = values.status;
-    } else {
-      jobData.status = "Open"; // Default to 'Open' if somehow invalid or not provided
-    }
+    // Status is now determined automatically by deadline
+    const deadlineDate = values.deadline
+      ? new Date(values.deadline.format("YYYY-MM-DD"))
+      : new Date();
+    deadlineDate.setHours(23, 59, 59, 999); // End of deadline day
+    const today = new Date();
+    jobData.status = today <= deadlineDate ? "Open" : "Closed";
 
     if (!isEditMode && user?.id) {
       jobData.posted_by = user.id;
@@ -168,17 +168,6 @@ const JobForm: React.FC<JobFormProps> = ({
               ]}
             >
               <Input placeholder="e.g., $80,000 - $100,000" />
-            </Form.Item>
-
-            <Form.Item
-              name="status"
-              label="Status"
-              rules={[{ required: true, message: "Please select a status" }]}
-            >
-              <Select>
-                <Option value="Open">Open</Option>
-                <Option value="Closed">Closed</Option>
-              </Select>
             </Form.Item>
 
             <Form.Item

@@ -1,9 +1,12 @@
 // src/components/Admin/LeaveManagementTable.tsx
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { leaveService } from "../../services/api/leaveService";
+import {
+  leaveRequestService,
+  leaveApprovalService,
+} from "../../services/api/hr";
 import { LeaveRequestDisplay } from "../../types/models";
-import { formatDate } from "../../utils/formatDate";
+import { formatDateNumeric } from "../../utils/formatDate";
 import {
   Table,
   Button,
@@ -14,6 +17,7 @@ import {
   Typography,
   Space,
   Avatar,
+  Tooltip,
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import {
@@ -22,6 +26,9 @@ import {
   CloseCircleOutlined,
   SyncOutlined,
   UserOutlined,
+  EyeOutlined,
+  CheckOutlined,
+  CloseOutlined,
 } from "@ant-design/icons";
 
 const { Title } = Typography;
@@ -67,6 +74,15 @@ const LeaveManagementTable: React.FC<LeaveManagementTableProps> = ({
   leaveRequests: propLeaveRequests,
 }) => {
   const queryClient = useQueryClient();
+  const [selectedReason, setSelectedReason] = useState<{
+    visible: boolean;
+    reason: string;
+    employee: string;
+  }>({
+    visible: false,
+    reason: "",
+    employee: "",
+  });
 
   const {
     data: fetchedLeaveRequests,
@@ -74,7 +90,7 @@ const LeaveManagementTable: React.FC<LeaveManagementTableProps> = ({
     error: queryError,
   } = useQuery<LeaveRequestDisplay[], Error>({
     queryKey: ["allLeaveRequests"],
-    queryFn: leaveService.getAllLeaveRequests,
+    queryFn: leaveRequestService.getAllLeaveRequests,
     enabled: !propLeaveRequests, // Only fetch if no props provided
   });
 
@@ -89,7 +105,8 @@ const LeaveManagementTable: React.FC<LeaveManagementTableProps> = ({
   }, [queryError]);
 
   const approveMutation = useMutation<LeaveRequestDisplay, Error, string>({
-    mutationFn: (requestId) => leaveService.approveLeaveRequest(requestId),
+    mutationFn: (requestId) =>
+      leaveApprovalService.approveLeaveRequest(requestId),
     onSuccess: () => {
       message.success("Leave request approved.");
       queryClient.invalidateQueries({ queryKey: ["allLeaveRequests"] });
@@ -101,7 +118,8 @@ const LeaveManagementTable: React.FC<LeaveManagementTableProps> = ({
   });
 
   const rejectMutation = useMutation<LeaveRequestDisplay, Error, string>({
-    mutationFn: (requestId) => leaveService.rejectLeaveRequest(requestId),
+    mutationFn: (requestId) =>
+      leaveApprovalService.rejectLeaveRequest(requestId),
     onSuccess: () => {
       message.success("Leave request rejected.");
       queryClient.invalidateQueries({ queryKey: ["allLeaveRequests"] });
@@ -130,120 +148,177 @@ const LeaveManagementTable: React.FC<LeaveManagementTableProps> = ({
       title: "Employee",
       dataIndex: "employee_name",
       key: "employee",
+      width: 180,
       render: (_, record) => (
-        <Space>
-          <Avatar src={record.employee_avatar_url} icon={<UserOutlined />} />
-          <div>
-            <Typography.Text>{record.employee_name}</Typography.Text>
+        <div className="flex items-center space-x-3">
+          <Avatar
+            src={record.employee_avatar_url}
+            icon={<UserOutlined />}
+            size={40}
+            style={{
+              flexShrink: 0,
+              border: "2px solid #f0f0f0",
+            }}
+          />
+          <div className="flex flex-col min-w-0 flex-1">
+            <Typography.Text
+              strong
+              className="text-sm truncate"
+              style={{ lineHeight: "1.2" }}
+            >
+              {record.employee_name}
+            </Typography.Text>
             {record.employee_department && (
               <Typography.Text
                 type="secondary"
-                style={{ display: "block", fontSize: "12px" }}
+                className="text-xs truncate"
+                style={{
+                  lineHeight: "1.1",
+                  marginTop: "2px",
+                }}
               >
                 {record.employee_department}
               </Typography.Text>
             )}
           </div>
-        </Space>
+        </div>
       ),
     },
     {
       title: "Leave Type",
       dataIndex: "leave_type_name",
       key: "leave_type_name",
-      render: (text, record) => (
-        <Space>
-          {record.leave_type_color_scheme && (
-            <Tag
-              color={record.leave_type_color_scheme}
-              style={{
-                marginRight: 8,
-                width: "14px",
-                height: "14px",
-                borderRadius: "50%",
-                border: "1px solid #ccc",
-                display: "inline-block",
-              }}
-            />
-          )}
+      width: 120,
+      render: (text) => (
+        <Typography.Text className="text-sm font-medium">
           {text}
-        </Space>
+        </Typography.Text>
       ),
     },
     {
       title: "Start Date",
       dataIndex: "start_date",
       key: "start_date",
-      render: (text) => formatDate(text),
+      width: 100,
+      render: (text) => (
+        <Typography.Text className="font-mono text-sm">
+          {formatDateNumeric(text)}
+        </Typography.Text>
+      ),
     },
     {
       title: "End Date",
       dataIndex: "end_date",
       key: "end_date",
-      render: (text) => formatDate(text),
+      width: 100,
+      render: (text) => (
+        <Typography.Text className="font-mono text-sm">
+          {formatDateNumeric(text)}
+        </Typography.Text>
+      ),
     },
     {
       title: "Duration",
       dataIndex: "duration_days",
       key: "duration_days",
-      render: (days) => `${days} day(s)`,
+      width: 80,
+      align: "center" as const,
+      render: (days) => (
+        <Typography.Text strong className="text-sm">
+          {days} {days === 1 ? "day" : "days"}
+        </Typography.Text>
+      ),
     },
     {
       title: "Status",
       dataIndex: "status",
       key: "status",
+      width: 90,
+      align: "center" as const,
       render: (status) => getStatusTag(status),
-    },
-    {
-      title: "Reason",
-      dataIndex: "reason",
-      key: "reason",
-      ellipsis: true,
-      render: (text) => text || "-",
     },
     {
       title: "Submitted On",
       dataIndex: "created_at",
       key: "created_at",
-      render: (text) => formatDate(text),
+      width: 100,
+      render: (text) => (
+        <Typography.Text className="font-mono text-sm">
+          {formatDateNumeric(text)}
+        </Typography.Text>
+      ),
     },
     {
       title: "Actions",
       key: "actions",
       fixed: "right",
-      width: 220,
+      width: 100,
+      align: "center" as const,
       render: (_, record) => {
         if (record.status === "pending") {
           return (
-            <Space>
-              <Button
-                type="primary"
-                icon={<CheckCircleOutlined />}
-                onClick={() => approveMutation.mutate(record.id)}
-                loading={
-                  approveMutation.isPending &&
-                  approveMutation.variables === record.id
-                }
-                size="small"
-              >
-                Approve
-              </Button>
-              <Button
-                danger
-                icon={<CloseCircleOutlined />}
-                onClick={() => handleRejectWithConfirmation(record.id)}
-                loading={
-                  rejectMutation.isPending &&
-                  rejectMutation.variables === record.id
-                }
-                size="small"
-              >
-                Reject
-              </Button>
+            <Space size="small">
+              <Tooltip title="View Reason">
+                <Button
+                  type="text"
+                  icon={<EyeOutlined />}
+                  onClick={() =>
+                    setSelectedReason({
+                      visible: true,
+                      reason: record.reason || "No reason provided",
+                      employee: record.employee_name || "Unknown Employee",
+                    })
+                  }
+                  size="small"
+                  shape="circle"
+                />
+              </Tooltip>
+              <Tooltip title="Approve">
+                <Button
+                  type="text"
+                  icon={<CheckOutlined style={{ color: "#52c41a" }} />}
+                  onClick={() => approveMutation.mutate(record.id)}
+                  loading={
+                    approveMutation.isPending &&
+                    approveMutation.variables === record.id
+                  }
+                  size="small"
+                  shape="circle"
+                />
+              </Tooltip>
+              <Tooltip title="Reject">
+                <Button
+                  type="text"
+                  icon={<CloseOutlined style={{ color: "#ff4d4f" }} />}
+                  onClick={() => handleRejectWithConfirmation(record.id)}
+                  loading={
+                    rejectMutation.isPending &&
+                    rejectMutation.variables === record.id
+                  }
+                  size="small"
+                  shape="circle"
+                />
+              </Tooltip>
             </Space>
           );
         }
-        return null;
+        return (
+          <Tooltip title="View Reason">
+            <Button
+              type="text"
+              icon={<EyeOutlined />}
+              onClick={() =>
+                setSelectedReason({
+                  visible: true,
+                  reason: record.reason || "No reason provided",
+                  employee: record.employee_name || "Unknown Employee",
+                })
+              }
+              size="small"
+              shape="circle"
+            />
+          </Tooltip>
+        );
       },
     },
   ];
@@ -261,13 +336,50 @@ const LeaveManagementTable: React.FC<LeaveManagementTableProps> = ({
         dataSource={leaveRequests}
         loading={isLoading}
         rowKey="id"
-        scroll={{ x: true }}
+        scroll={{ x: 770 }}
+        size="middle"
+        className="leave-management-table"
+        rowClassName="leave-table-row"
         pagination={{
           pageSize: 10,
           showSizeChanger: true,
           pageSizeOptions: ["5", "10", "20", "50"],
+          showTotal: (total, range) =>
+            `${range[0]}-${range[1]} of ${total} requests`,
         }}
       />
+
+      {/* Reason Modal */}
+      <Modal
+        title={`Leave Reason - ${selectedReason.employee}`}
+        open={selectedReason.visible}
+        onCancel={() =>
+          setSelectedReason({
+            visible: false,
+            reason: "",
+            employee: "",
+          })
+        }
+        footer={[
+          <Button
+            key="close"
+            onClick={() =>
+              setSelectedReason({
+                visible: false,
+                reason: "",
+                employee: "",
+              })
+            }
+          >
+            Close
+          </Button>,
+        ]}
+        width={500}
+      >
+        <div style={{ padding: "16px 0" }}>
+          <Typography.Text>{selectedReason.reason}</Typography.Text>
+        </div>
+      </Modal>
     </Card>
   );
 };

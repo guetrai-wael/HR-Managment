@@ -1,9 +1,12 @@
 // src/components/Leave/LeaveHistoryTable.tsx
-import React from "react";
+import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { leaveService } from "../../services/api/leaveService";
+import {
+  leaveRequestService,
+  leaveApprovalService,
+} from "../../services/api/hr";
 import { LeaveRequestDisplay } from "../../types/models";
-import { formatDate } from "../../utils/formatDate";
+import { formatDateNumeric } from "../../utils/formatDate";
 import {
   Table,
   Button,
@@ -12,6 +15,7 @@ import {
   Modal,
   message,
   Typography,
+  Tooltip,
   Space,
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
@@ -22,6 +26,7 @@ import {
   SyncOutlined,
   ExclamationCircleOutlined,
   DeleteOutlined,
+  EyeOutlined,
 } from "@ant-design/icons";
 
 const { Title } = Typography;
@@ -68,6 +73,15 @@ const LeaveHistoryTable: React.FC<LeaveHistoryTableProps> = ({
   leaveRequests: propLeaveRequests,
 }) => {
   const queryClient = useQueryClient();
+  const [selectedReason, setSelectedReason] = useState<{
+    visible: boolean;
+    reason: string;
+    leaveType: string;
+  }>({
+    visible: false,
+    reason: "",
+    leaveType: "",
+  });
 
   const {
     data: fetchedLeaveRequests,
@@ -75,7 +89,7 @@ const LeaveHistoryTable: React.FC<LeaveHistoryTableProps> = ({
     error,
   } = useQuery<LeaveRequestDisplay[], Error>({
     queryKey: ["myLeaveRequests"],
-    queryFn: leaveService.getMyLeaveRequests,
+    queryFn: leaveRequestService.getMyLeaveRequests,
     enabled: !propLeaveRequests, // Only fetch if no props provided
   });
 
@@ -83,7 +97,7 @@ const LeaveHistoryTable: React.FC<LeaveHistoryTableProps> = ({
   const leaveRequests = propLeaveRequests || fetchedLeaveRequests;
 
   const cancelMutation = useMutation<LeaveRequestDisplay, Error, string>({
-    mutationFn: leaveService.cancelLeaveRequest,
+    mutationFn: leaveApprovalService.cancelLeaveRequest,
     onSuccess: () => {
       message.success("Leave request cancelled successfully.");
       queryClient.invalidateQueries({ queryKey: ["myLeaveRequests"] });
@@ -112,82 +126,124 @@ const LeaveHistoryTable: React.FC<LeaveHistoryTableProps> = ({
       title: "Leave Type",
       dataIndex: "leave_type_name",
       key: "leave_type_name",
-      render: (text, record) => (
-        <Space>
-          {record.leave_type_color_scheme && (
-            <Tag
-              color={record.leave_type_color_scheme}
-              style={{
-                marginRight: 8,
-                width: "14px",
-                height: "14px",
-                borderRadius: "50%",
-                border: "1px solid #ccc",
-                display: "inline-block",
-              }}
-            />
-          )}
+      width: 120,
+      render: (text) => (
+        <Typography.Text className="text-sm font-medium">
           {text}
-        </Space>
+        </Typography.Text>
       ),
     },
     {
       title: "Start Date",
       dataIndex: "start_date",
       key: "start_date",
-      render: (text) => formatDate(text),
+      width: 100,
+      render: (text) => (
+        <Typography.Text className="font-mono text-sm">
+          {formatDateNumeric(text)}
+        </Typography.Text>
+      ),
     },
     {
       title: "End Date",
       dataIndex: "end_date",
       key: "end_date",
-      render: (text) => formatDate(text),
+      width: 100,
+      render: (text) => (
+        <Typography.Text className="font-mono text-sm">
+          {formatDateNumeric(text)}
+        </Typography.Text>
+      ),
     },
     {
       title: "Duration",
       dataIndex: "duration_days",
       key: "duration_days",
-      render: (days) => `${days} day(s)`,
+      width: 80,
+      align: "center" as const,
+      render: (days) => (
+        <Typography.Text strong className="text-sm">
+          {days} {days === 1 ? "day" : "days"}
+        </Typography.Text>
+      ),
     },
     {
       title: "Status",
       dataIndex: "status",
       key: "status",
+      width: 90,
+      align: "center" as const,
       render: (status) => getStatusTag(status),
-    },
-    {
-      title: "Reason",
-      dataIndex: "reason",
-      key: "reason",
-      render: (text) => text || "-",
     },
     {
       title: "Submitted On",
       dataIndex: "created_at",
       key: "created_at",
-      render: (text) => formatDate(text),
+      width: 110,
+      render: (text) => (
+        <Typography.Text className="font-mono text-sm">
+          {formatDateNumeric(text)}
+        </Typography.Text>
+      ),
     },
     {
       title: "Actions",
       key: "actions",
+      width: 100,
+      align: "center" as const,
       render: (_, record) => {
         if (record.status === "pending") {
           return (
-            <Button
-              type="link"
-              danger
-              icon={<DeleteOutlined />}
-              onClick={() => handleCancelRequest(record.id)}
-              loading={
-                cancelMutation.isPending &&
-                cancelMutation.variables === record.id
-              }
-            >
-              Cancel
-            </Button>
+            <Space size="small">
+              <Tooltip title="View Reason">
+                <Button
+                  type="text"
+                  icon={<EyeOutlined />}
+                  onClick={() =>
+                    setSelectedReason({
+                      visible: true,
+                      reason: record.reason || "No reason provided",
+                      leaveType: record.leave_type_name || "Leave Request",
+                    })
+                  }
+                  size="small"
+                  shape="circle"
+                />
+              </Tooltip>
+              <Tooltip title="Cancel Request">
+                <Button
+                  type="text"
+                  danger
+                  icon={<DeleteOutlined />}
+                  onClick={() => handleCancelRequest(record.id)}
+                  loading={
+                    cancelMutation.isPending &&
+                    cancelMutation.variables === record.id
+                  }
+                  size="small"
+                  shape="circle"
+                />
+              </Tooltip>
+            </Space>
           );
         }
-        return null;
+        return (
+          <Tooltip title="View Reason">
+            <Button
+              type="text"
+              icon={<EyeOutlined />}
+              onClick={() =>
+                setSelectedReason({
+                  visible: true,
+                  reason: record.reason || "No reason provided",
+                  leaveType: record.leave_type_name || "Leave Request",
+                })
+              }
+              size="small"
+              shape="circle"
+            />
+          </Tooltip>
+        );
       },
     },
   ];
@@ -206,13 +262,50 @@ const LeaveHistoryTable: React.FC<LeaveHistoryTableProps> = ({
         dataSource={leaveRequests}
         loading={isLoading}
         rowKey="id"
-        scroll={{ x: true }}
+        scroll={{ x: 700 }}
+        size="middle"
+        className="leave-history-table"
+        rowClassName="leave-table-row"
         pagination={{
-          pageSize: 5,
+          pageSize: 8,
           showSizeChanger: true,
-          pageSizeOptions: ["5", "10", "20"],
+          pageSizeOptions: ["5", "8", "15", "25"],
+          showTotal: (total, range) =>
+            `${range[0]}-${range[1]} of ${total} requests`,
         }}
       />
+
+      {/* Reason Modal */}
+      <Modal
+        title={`Leave Reason - ${selectedReason.leaveType}`}
+        open={selectedReason.visible}
+        onCancel={() =>
+          setSelectedReason({
+            visible: false,
+            reason: "",
+            leaveType: "",
+          })
+        }
+        footer={[
+          <Button
+            key="close"
+            onClick={() =>
+              setSelectedReason({
+                visible: false,
+                reason: "",
+                leaveType: "",
+              })
+            }
+          >
+            Close
+          </Button>,
+        ]}
+        width={500}
+      >
+        <div style={{ padding: "16px 0" }}>
+          <Typography.Text>{selectedReason.reason}</Typography.Text>
+        </div>
+      </Modal>
     </Card>
   );
 };

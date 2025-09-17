@@ -11,7 +11,7 @@ import {
 } from "../../components/Applications";
 import { useUser, useRole, useApplicationActions } from "../../hooks";
 import { Application, FilterValues } from "../../types";
-import { fetchApplications } from "../../services/api/applicationService";
+import { applicationCrudService } from "../../services/api/recruitment";
 
 const Applications: React.FC = () => {
   const navigate = useNavigate();
@@ -20,7 +20,12 @@ const Applications: React.FC = () => {
     authLoading: userAuthLoading,
     profileLoading: userProfileLoading,
   } = useUser();
-  const { isAdmin, loading: roleCheckLoading } = useRole();
+
+  // 🆕 NEW: Using pure standardized structure
+  const {
+    data: { isAdmin },
+    isLoading: roleCheckLoading,
+  } = useRole();
   const [filters, setFilters] = useState<FilterValues>({});
 
   const {
@@ -36,37 +41,63 @@ const Applications: React.FC = () => {
     ],
     queryFn: () => {
       if (!user) return Promise.resolve([]);
-      return fetchApplications(
-        { ...filters, search: undefined },
+      return applicationCrudService.getAll({
+        ...filters,
+        search: undefined,
         isAdmin,
-        user.id
-      );
+        userId: user.id,
+      });
     },
     enabled:
       !!user && !userAuthLoading && !userProfileLoading && !roleCheckLoading,
   });
 
-  // Client-side filtering for search since Supabase has issues with joined table or() queries
+  // Client-side filtering for job and search filters
   const filteredApplications = React.useMemo(() => {
-    if (!applications || !filters.search) return applications;
+    if (!applications) return applications;
 
-    const searchTerm = filters.search.toLowerCase();
-    return applications.filter((app) => {
-      const firstName = app.profile?.first_name?.toLowerCase() || "";
-      const lastName = app.profile?.last_name?.toLowerCase() || "";
-      const email = app.profile?.email?.toLowerCase() || "";
-      const jobTitle = app.job?.title?.toLowerCase() || "";
+    let filtered = applications;
 
-      return (
-        firstName.includes(searchTerm) ||
-        lastName.includes(searchTerm) ||
-        email.includes(searchTerm) ||
-        jobTitle.includes(searchTerm)
+    // Filter by job ID if selected
+    if (filters.jobId) {
+      filtered = filtered.filter((app) => app.job?.id === filters.jobId);
+    }
+
+    // Filter by department ID if selected
+    if (filters.departmentId) {
+      filtered = filtered.filter(
+        (app) => app.job?.department?.id === filters.departmentId
       );
-    });
-  }, [applications, filters.search]);
+    }
 
-  const { updateStatus, isUpdatingStatus } = useApplicationActions(filters);
+    // Filter by search term (admin only - for applicant names/emails)
+    if (filters.search && isAdmin) {
+      const searchTerm = filters.search.toLowerCase();
+      filtered = filtered.filter((app) => {
+        const firstName = app.profile?.first_name?.toLowerCase() || "";
+        const lastName = app.profile?.last_name?.toLowerCase() || "";
+        const email = app.profile?.email?.toLowerCase() || "";
+
+        return (
+          firstName.includes(searchTerm) ||
+          lastName.includes(searchTerm) ||
+          email.includes(searchTerm)
+        );
+      });
+    }
+
+    return filtered;
+  }, [
+    applications,
+    filters.jobId,
+    filters.departmentId,
+    filters.search,
+    isAdmin,
+  ]);
+
+  // 🆕 NEW: Using standardized useApplicationActions structure
+  const { actions, isLoading: applicationActionsLoading } =
+    useApplicationActions(filters);
 
   const [selectedApplication, setSelectedApplication] =
     useState<Application | null>(null);
@@ -99,7 +130,8 @@ const Applications: React.FC = () => {
     status: Application["status"]
   ) => {
     try {
-      await updateStatus({ id, status });
+      // 🆕 NEW: Using actions.updateStatus instead of direct updateStatus
+      await actions.updateStatus({ id, status });
       if (selectedApplication?.id === id) {
         setSelectedApplication((prev) =>
           prev ? { ...prev, status: status } : null
@@ -120,6 +152,16 @@ const Applications: React.FC = () => {
 
   const handleInterview = (id: number) => {
     handleUpdateApplicationStatus(id, "interviewing");
+  };
+
+  const handleCancel = async (id: number, _applicantName: string) => {
+    try {
+      await actions.deleteApplication(id);
+      message.success(`Application cancelled successfully`);
+    } catch (error) {
+      // Error is handled by useMutation's onError callback in useApplicationActions
+      console.error("Failed to cancel application:", error);
+    }
   };
 
   // Combined loading state for the main content query boundary
@@ -161,7 +203,7 @@ const Applications: React.FC = () => {
       >
         <ApplicationsTable
           applications={filteredApplications || []}
-          loading={isUpdatingStatus}
+          loading={applicationActionsLoading}
           isAdmin={isAdmin}
           onViewDetails={handleViewDetails}
           onViewResume={handleViewResume}
@@ -169,6 +211,7 @@ const Applications: React.FC = () => {
           onAccept={handleAccept}
           onReject={handleReject}
           onInterview={handleInterview}
+          onCancel={handleCancel}
         />
       </QueryBoundary>
 

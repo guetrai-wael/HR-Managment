@@ -262,6 +262,106 @@ NEW.updated_at = NOW();
 - Comprehensive automation
 - Advanced leave calculations
 
+### 🔧 **System Maintenance Functions**
+
+#### `update_jobs_deadline_logic()` - **SYSTEM MODIFICATION**
+
+**Purpose**: Migration script to align job status with new deadline-only logic
+**Date**: September 16, 2025
+**Impact**: **BREAKING CHANGE** - Jobs now use deadline-only status logic
+
+**Background**:
+Previously, jobs had both a manual `status` field ("Open"/"Closed") and a `deadline` field, causing inconsistencies between UI and database. The system now uses **deadline-only logic**:
+
+- `deadline >= today` → Status = "Open"
+- `deadline < today` → Status = "Closed"
+- `deadline IS NULL` → Status = "Open" (always accepting)
+
+**Database Changes**:
+
+```sql
+-- Update all existing jobs to match new logic
+UPDATE jobs SET status = 'Open' WHERE deadline >= CURRENT_DATE;
+UPDATE jobs SET status = 'Closed' WHERE deadline < CURRENT_DATE;
+UPDATE jobs SET status = 'Open' WHERE deadline IS NULL;
+```
+
+**Frontend Changes**:
+
+- Removed manual status dropdown from job forms
+- JobCard component now calculates status from deadline only
+- Dashboard statistics count active jobs by `deadline >= today`
+- Job creation automatically sets status based on deadline
+
+**Benefits**:
+
+- ✅ Eliminates UI/database inconsistencies
+- ✅ Automatic job lifecycle management
+- ✅ Simpler logic and fewer manual steps
+- ✅ Accurate dashboard statistics
+
+---
+
+#### `close_expired_jobs()`
+
+**Purpose**: Automatically closes jobs that have passed their deadline
+**Returns**: `integer` (count of jobs updated)
+**Usage**: Manual execution or scheduled maintenance
+
+```sql
+CREATE OR REPLACE FUNCTION close_expired_jobs()
+RETURNS integer
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  updated_count integer;
+BEGIN
+  -- Update jobs where deadline has passed and status is still 'Open'
+  UPDATE jobs
+  SET status = 'Closed'
+  WHERE status = 'Open'
+    AND deadline < now()
+    AND deadline IS NOT NULL;
+
+  -- Get the count of updated rows
+  GET DIAGNOSTICS updated_count = ROW_COUNT;
+
+  RETURN updated_count;
+END;
+$$;
+```
+
+**Key Features**:
+
+- Identifies jobs with `status = 'Open'` and `deadline < now()`
+- Updates status to 'Closed' for expired jobs
+- Returns count of updated records
+- Includes NULL deadline safety check
+- Uses `SECURITY DEFINER` for admin-level execution
+
+**Usage Examples**:
+
+```sql
+-- Manual execution to close expired jobs
+SELECT close_expired_jobs();
+
+-- Check results
+SELECT
+  COUNT(*) as total_jobs,
+  COUNT(CASE WHEN status = 'Open' THEN 1 END) as open_jobs,
+  COUNT(CASE WHEN status = 'Closed' THEN 1 END) as closed_jobs
+FROM jobs;
+```
+
+**Integration**:
+
+- Fixes dashboard statistics showing incorrect active job counts
+- Ensures database status matches UI display logic
+- Eliminates need for complex application-level job maintenance
+
+---
+
 **Recommended Cleanup**:
 
 1. Remove duplicate trigger functions

@@ -15,14 +15,19 @@ import {
   ActivityFeed,
   DashboardSidebar,
 } from "../../components/Dashboard";
-import { leaveService } from "../../services/api/leaveService";
+import { leaveBalanceService } from "../../services/api/hr";
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useUser();
-  const { isAdmin, isEmployee } = useRole();
 
-  // Fetch dashboard data
+  // 🆕 NEW: Using pure standardized structure
+  const {
+    data: { isAdmin, isEmployee },
+    isLoading: roleLoading,
+  } = useRole();
+
+  // Only fetch dashboard data if roles are determined and user has a valid role
   const { data: stats, isLoading: statsLoading } = useDashboardStats(
     isAdmin,
     isEmployee
@@ -36,8 +41,10 @@ const Dashboard: React.FC = () => {
     Error
   >({
     queryKey: ["myLeaveBalance"],
-    queryFn: leaveService.getMyLeaveBalance,
-    enabled: isEmployee && !isAdmin, // Only fetch if user is employee and not admin
+    queryFn: leaveBalanceService.getMyLeaveBalance,
+    enabled: isEmployee && !isAdmin && !roleLoading, // Only fetch if user is employee and not admin, and roles are loaded
+    staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
+    gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
   });
 
   const handleActivityClick = (activity: DashboardActivity) => {
@@ -68,6 +75,17 @@ const Dashboard: React.FC = () => {
     return `Welcome back, ${name}!`;
   };
 
+  // Show loading state if roles are still being determined
+  if (roleLoading) {
+    return (
+      <PageLayout title="Dashboard" subtitle="Loading...">
+        <div className="flex justify-center items-center h-64">
+          <span>Loading dashboard...</span>
+        </div>
+      </PageLayout>
+    );
+  }
+
   return (
     <PageLayout title={getDashboardTitle()} subtitle={getWelcomeMessage()}>
       <Row gutter={[24, 24]}>
@@ -77,7 +95,7 @@ const Dashboard: React.FC = () => {
             {/* Statistics Cards */}
             <StatisticsCards
               stats={stats}
-              loading={statsLoading}
+              loading={statsLoading || roleLoading}
               isAdmin={isAdmin}
               isEmployee={isEmployee}
             />
@@ -85,7 +103,7 @@ const Dashboard: React.FC = () => {
             {/* Activity Feed Section */}
             <ActivityFeed
               activities={activities || []}
-              loading={activitiesLoading}
+              loading={activitiesLoading || roleLoading}
               isAdmin={isAdmin}
               onViewDetails={handleActivityClick}
             />

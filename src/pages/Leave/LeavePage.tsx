@@ -1,21 +1,40 @@
 // src/pages/Leave/LeavePage.tsx
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { PageLayout, QueryBoundary } from "../../components/common";
 import {
   LeaveBalanceDisplay,
   LeaveRequestForm,
   LeaveHistoryTable,
+  LeaveFilters,
 } from "../../components/Leave/";
 import LeaveManagementTable from "../../components/Admin/LeaveManagementTable";
 import { useRole } from "../../hooks/useRole";
-import { leaveService } from "../../services/api/leaveService";
+import {
+  leaveRequestService,
+  leaveBalanceService,
+} from "../../services/api/hr";
 import { LeaveRequestDisplay } from "../../types/models";
 import { Alert, Spin, Button, Modal } from "antd";
 
+interface LeaveFilterValues {
+  leaveTypeId?: number;
+  status?: string;
+  startDate?: string;
+  endDate?: string;
+  search?: string;
+}
+
 const LeavePage: React.FC = () => {
-  const { isAdmin, isEmployee, loading: roleLoading } = useRole();
+  // 🆕 NEW: Using pure standardized structure
+  const {
+    data: { isAdmin, isEmployee },
+    isLoading: roleLoading,
+  } = useRole();
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Filter state
+  const [filters, setFilters] = useState<LeaveFilterValues>({});
 
   // Fetch data for Admin
   const {
@@ -24,7 +43,7 @@ const LeavePage: React.FC = () => {
     error: adminRequestsError,
   } = useQuery<LeaveRequestDisplay[], Error>({
     queryKey: ["allLeaveRequests"],
-    queryFn: leaveService.getAllLeaveRequests,
+    queryFn: leaveRequestService.getAllLeaveRequests,
     enabled: isAdmin, // Only fetch if user is admin
   });
 
@@ -35,7 +54,7 @@ const LeavePage: React.FC = () => {
     error: employeeRequestsError,
   } = useQuery<LeaveRequestDisplay[], Error>({
     queryKey: ["myLeaveRequests"],
-    queryFn: leaveService.getMyLeaveRequests,
+    queryFn: leaveRequestService.getMyLeaveRequests,
     enabled: isEmployee && !isAdmin, // Only fetch if user is employee and not admin
   });
 
@@ -45,12 +64,100 @@ const LeavePage: React.FC = () => {
     error: leaveBalanceError,
   } = useQuery<number, Error>({
     queryKey: ["myLeaveBalance"],
-    queryFn: leaveService.getMyLeaveBalance,
+    queryFn: leaveBalanceService.getMyLeaveBalance,
     enabled: isEmployee && !isAdmin, // Only fetch if user is employee and not admin
   });
 
   const showModal = () => setIsModalOpen(true);
   const handleModalClose = () => setIsModalOpen(false);
+
+  const handleFilterChange = (newFilters: LeaveFilterValues) => {
+    setFilters(newFilters);
+  };
+
+  // Filter the leave requests based on current filters
+  const filteredAdminRequests = useMemo(() => {
+    if (!adminLeaveRequests) return [];
+
+    return adminLeaveRequests.filter((request) => {
+      // Search filter (employee name)
+      if (filters.search?.trim()) {
+        const searchLower = filters.search.toLowerCase();
+        const employeeName = request.employee_name?.toLowerCase() || "";
+        if (!employeeName.includes(searchLower)) {
+          return false;
+        }
+      }
+
+      // Leave type filter
+      if (
+        filters.leaveTypeId &&
+        request.leave_type_id !== String(filters.leaveTypeId)
+      ) {
+        return false;
+      }
+
+      // Status filter
+      if (filters.status?.trim() && request.status !== filters.status) {
+        return false;
+      }
+
+      // Date range filter
+      if (filters.startDate || filters.endDate) {
+        const requestStart = new Date(request.start_date);
+        const requestEnd = new Date(request.end_date);
+
+        if (filters.startDate) {
+          const filterStart = new Date(filters.startDate);
+          if (requestEnd < filterStart) return false;
+        }
+
+        if (filters.endDate) {
+          const filterEnd = new Date(filters.endDate);
+          if (requestStart > filterEnd) return false;
+        }
+      }
+
+      return true;
+    });
+  }, [adminLeaveRequests, filters]);
+
+  const filteredEmployeeRequests = useMemo(() => {
+    if (!employeeLeaveRequests) return [];
+
+    return employeeLeaveRequests.filter((request) => {
+      // Leave type filter
+      if (
+        filters.leaveTypeId &&
+        request.leave_type_id !== String(filters.leaveTypeId)
+      ) {
+        return false;
+      }
+
+      // Status filter
+      if (filters.status?.trim() && request.status !== filters.status) {
+        return false;
+      }
+
+      // Date range filter
+      if (filters.startDate || filters.endDate) {
+        const requestStart = new Date(request.start_date);
+        const requestEnd = new Date(request.end_date);
+
+        if (filters.startDate) {
+          const filterStart = new Date(filters.startDate);
+          if (requestEnd < filterStart) return false;
+        }
+
+        if (filters.endDate) {
+          const filterEnd = new Date(filters.endDate);
+          if (requestStart > filterEnd) return false;
+        }
+      }
+
+      return true;
+    });
+  }, [employeeLeaveRequests, filters]);
 
   if (roleLoading) {
     return (
@@ -103,12 +210,24 @@ const LeavePage: React.FC = () => {
               >
                 <LeaveRequestForm onSubmitSuccess={handleModalClose} />
               </Modal>
-              <LeaveHistoryTable leaveRequests={employeeLeaveRequests} />
+              <LeaveFilters
+                defaultValues={filters}
+                onFilterChange={handleFilterChange}
+                isAdmin={false}
+              />
+              <LeaveHistoryTable leaveRequests={filteredEmployeeRequests} />
             </>
           )}
 
           {isAdmin && (
-            <LeaveManagementTable leaveRequests={adminLeaveRequests} />
+            <>
+              <LeaveFilters
+                defaultValues={filters}
+                onFilterChange={handleFilterChange}
+                isAdmin={true}
+              />
+              <LeaveManagementTable leaveRequests={filteredAdminRequests} />
+            </>
           )}
 
           {!isEmployee && !isAdmin && (

@@ -2,7 +2,7 @@ import { createContext, useEffect, useState, ReactNode, useRef } from "react";
 import supabase from "../services/supabaseClient";
 import { Session, User } from "@supabase/supabase-js";
 import { useQuery } from "@tanstack/react-query";
-import { fetchUserProfile } from "../services/api/userService";
+import { profileService } from "../services/api/core";
 import { UserProfile } from "../types";
 
 interface UserContextType {
@@ -69,7 +69,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     queryKey: ["userProfile", user?.id],
     queryFn: async () => {
       if (!user?.id) return null;
-      return fetchUserProfile(user.id);
+      return profileService.getById(user.id);
     },
     enabled: !!user?.id && !authLoading,
     retry: 1,

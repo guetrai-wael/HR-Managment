@@ -1,4 +1,3 @@
-// src/components/common/FilterFields/MobileFilterWrapper.tsx
 import React, { useState } from "react";
 import { Button, Drawer } from "antd";
 import { FilterOutlined } from "@ant-design/icons";
@@ -29,7 +28,6 @@ export const MobileFilterWrapper: React.FC<MobileFilterWrapperProps> = ({
 
   return (
     <div className="lg:hidden">
-      {" "}
       {/* This wrapper ensures it's only for mobile */}
       <Button
         icon={<FilterOutlined />}

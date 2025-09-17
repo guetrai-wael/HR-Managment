@@ -1,11 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 // import { message } from "antd"; // Keep for specific messages if needed
 import { Job } from "../types";
-import {
-  createJob as apiCreateJob,
-  updateJob as apiUpdateJob,
-  deleteJob as apiDeleteJob,
-} from "../services/api/jobService";
+import { jobService } from "../services/api/recruitment";
 import { useMutationHandler } from "./useMutationHandler"; // Import the new hook
 
 export const useJobActions = (departmentIdToFilter?: number | "all") => {
@@ -21,7 +17,7 @@ export const useJobActions = (departmentIdToFilter?: number | "all") => {
   // --- Create Job Mutation ---
   const { mutateAsync: createJob, isPending: isCreatingJob } =
     useMutationHandler<Job | null, Error, Partial<Job>>({
-      mutationFn: apiCreateJob,
+      mutationFn: jobService.create,
       queryClient,
       successMessage: "Job posted successfully!",
       errorMessagePrefix: "Failed to create job",
@@ -35,7 +31,7 @@ export const useJobActions = (departmentIdToFilter?: number | "all") => {
       Error,
       { id: number; jobData: Partial<Job> }
     >({
-      mutationFn: ({ id, jobData }) => apiUpdateJob(id, jobData),
+      mutationFn: ({ id, jobData }) => jobService.update(id, jobData),
       queryClient,
       successMessage: "Job updated successfully!",
       errorMessagePrefix: "Failed to update job",
@@ -48,17 +44,15 @@ export const useJobActions = (departmentIdToFilter?: number | "all") => {
 
   // --- Delete Job Mutation ---
   const { mutateAsync: deleteJob, isPending: isDeletingJob } =
-    useMutationHandler<boolean, Error, number>({
-      mutationFn: apiDeleteJob,
+    useMutationHandler<void, Error, number>({
+      mutationFn: jobService.delete,
       queryClient,
       // Success message is often handled in the component for more context (e.g., job title)
       // successMessage: "Job deleted successfully",
       errorMessagePrefix: "Failed to delete job",
-      onSuccess: (success, jobId) => {
-        if (success) {
-          // message.success(`Job deleted successfully.`); // Example of specific message if needed
-          queryClient.invalidateQueries({ queryKey: ["job", jobId] });
-        }
+      onSuccess: (_data, jobId) => {
+        // message.success(`Job deleted successfully.`); // Example of specific message if needed
+        queryClient.invalidateQueries({ queryKey: ["job", jobId] });
       },
       invalidateQueries: [getQueryKey(), ["jobs"]],
     });

@@ -15,11 +15,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useUser } from "../../hooks/useUser";
 import QueryBoundary from "../../components/common/QueryBoundary";
 import { PageLayout } from "../../components/common"; // Added PageLayout
-import {
-  fetchUserProfile,
-  updateUserProfile,
-  updateUserAvatar,
-} from "../../services/api/userService";
+import { profileService, avatarService } from "../../services/api/core";
 import { UserProfile } from "../../types/models";
 import type { RcFile, UploadProps } from "antd/es/upload/interface";
 import { useMutationHandler } from "../../hooks/useMutationHandler";
@@ -46,6 +42,7 @@ const SettingsPage: React.FC = () => {
   } = useUser();
   const queryClient = useQueryClient();
   const [form] = Form.useForm<ProfileFormValues>();
+  const formInitialized = React.useRef(false);
 
   // --- React Query for fetching user profile ---
   const {
@@ -56,13 +53,17 @@ const SettingsPage: React.FC = () => {
   } = useQuery<UserProfile | null, Error>({
     queryKey: ["userProfile", user?.id],
     queryFn: () =>
-      user?.id ? fetchUserProfile(user.id) : Promise.resolve(null),
+      user?.id ? profileService.getById(user.id) : Promise.resolve(null),
     enabled: !!user && !!user.id && !authLoading && !userProfileLoadingHook,
+    refetchOnWindowFocus: false, // Don't refetch when window gains focus
+    refetchOnMount: false, // Don't refetch when component mounts if data exists
+    staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
   });
 
   // Effect to fill form when profile data is available or user session loads
   useEffect(() => {
-    if (profile) {
+    // Only initialize form once when we have data, don't overwrite user input
+    if (profile && !formInitialized.current) {
       form.setFieldsValue({
         first_name: profile.first_name || user?.user_metadata?.first_name || "",
         last_name: profile.last_name || user?.user_metadata?.last_name || "",
@@ -70,7 +71,14 @@ const SettingsPage: React.FC = () => {
         bio: profile.bio,
         physical_address: profile.physical_address,
       });
-    } else if (user && !profileQueryIsLoading && !profileError) {
+      formInitialized.current = true;
+    } else if (
+      user &&
+      !profileQueryIsLoading &&
+      !profileError &&
+      !profile &&
+      !formInitialized.current
+    ) {
       // Pre-fill from user_metadata if no profile exists yet and not loading/error
       form.setFieldsValue({
         first_name: user.user_metadata?.first_name || "",
@@ -79,6 +87,7 @@ const SettingsPage: React.FC = () => {
         bio: "",
         physical_address: "",
       });
+      formInitialized.current = true;
     }
   }, [profile, user, profileQueryIsLoading, profileError, form]);
 
@@ -100,7 +109,7 @@ const SettingsPage: React.FC = () => {
         if (profile && !profile.id && user.email) {
           payload.email = user.email;
         }
-        return updateUserProfile(user.id, payload);
+        return profileService.update(user.id, payload);
       },
       queryClient,
       successMessage: "Profile saved successfully!",
@@ -113,13 +122,16 @@ const SettingsPage: React.FC = () => {
     useMutationHandler<UserProfile, Error, File>({
       mutationFn: (file) => {
         if (!user?.id) throw new Error("User ID is missing.");
-        return updateUserAvatar(user.id, file);
+        return avatarService.update(user.id, file);
       },
       queryClient,
       successMessage: "Avatar updated successfully!",
       errorMessagePrefix: "Failed to upload avatar",
       invalidateQueries: [["userProfile", user?.id]],
     });
+
+  // Better disabled logic - only disable during initial load or save, not background refetch
+  const fieldsDisabled = (profileQueryIsLoading && !profile) || isSavingProfile;
 
   const handleFormSubmit = (values: ProfileFormValues) => {
     saveProfile(values);
@@ -279,7 +291,7 @@ const SettingsPage: React.FC = () => {
                       ]}
                     >
                       <Input
-                        disabled={profileIsFetching || isSavingProfile}
+                        disabled={fieldsDisabled}
                         className="settings-input"
                       />
                     </Form.Item>
@@ -296,7 +308,7 @@ const SettingsPage: React.FC = () => {
                       ]}
                     >
                       <Input
-                        disabled={profileIsFetching || isSavingProfile}
+                        disabled={fieldsDisabled}
                         className="settings-input"
                       />
                     </Form.Item>
@@ -306,7 +318,7 @@ const SettingsPage: React.FC = () => {
                   <Col xs={24} sm={24} md={12}>
                     <Form.Item name="phone" label="Phone Number">
                       <Input
-                        disabled={profileIsFetching || isSavingProfile}
+                        disabled={fieldsDisabled}
                         className="settings-input"
                       />
                     </Form.Item>
@@ -324,14 +336,14 @@ const SettingsPage: React.FC = () => {
                 <Form.Item name="physical_address" label="Physical Address">
                   <Input.TextArea
                     rows={3}
-                    disabled={profileIsFetching || isSavingProfile}
+                    disabled={fieldsDisabled}
                     className="settings-textarea"
                   />
                 </Form.Item>
                 <Form.Item name="bio" label="Bio">
                   <Input.TextArea
                     rows={4}
-                    disabled={profileIsFetching || isSavingProfile}
+                    disabled={fieldsDisabled}
                     className="settings-textarea"
                   />
                 </Form.Item>

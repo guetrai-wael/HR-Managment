@@ -8,8 +8,8 @@ import QueryBoundary from "../../components/common/QueryBoundary";
 import { JobCard } from "../../components/Jobs/index";
 import { JobForm } from "../../components/Jobs/index";
 import { useRole, useJobActions } from "../../hooks";
-import { fetchJobs } from "../../services/api/jobService";
-import { fetchDepartments } from "../../services/api/departmentService";
+import { jobService } from "../../services/api/recruitment/jobService";
+import { departmentService } from "../../services/api/admin/departmentService";
 import { Job } from "../../types";
 import { Department } from "../../types/models";
 
@@ -18,7 +18,11 @@ const { confirm } = Modal;
 
 const Jobs = () => {
   const navigate = useNavigate();
-  const { isAdmin } = useRole();
+
+  // 🆕 NEW: Using pure standardized structure
+  const {
+    data: { isAdmin },
+  } = useRole();
   const queryClient = useQueryClient();
   const [jobFormVisible, setJobFormVisible] = useState(false);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
@@ -37,7 +41,7 @@ const Jobs = () => {
     error: departmentsError,
   } = useQuery<Department[], Error>({
     queryKey: ["departments"],
-    queryFn: fetchDepartments,
+    queryFn: departmentService.getAll,
   });
 
   const {
@@ -47,7 +51,7 @@ const Jobs = () => {
     error: jobsError,
   } = useQuery<Job[], Error>({
     queryKey: ["jobs", departmentIdToFilter],
-    queryFn: () => fetchJobs(departmentIdToFilter),
+    queryFn: () => jobService.getAll({ departmentId: departmentIdToFilter }),
     enabled: !!departmentsData,
   });
 

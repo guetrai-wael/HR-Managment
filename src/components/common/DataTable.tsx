@@ -1,4 +1,4 @@
-import { Table, Empty } from "antd";
+import { Table, Empty, Card } from "antd";
 import { TableProps } from "antd/es/table";
 
 interface DataTableProps<T extends object> extends TableProps<T> {
@@ -38,7 +38,11 @@ const DataTable = <T extends object>({
       : { ...defaultPaginationConfig, ...pagination };
 
   return (
-    <div className={containerClassName}>
+    <Card
+      bordered={false}
+      style={{ boxShadow: "0 0 10px rgba(0,0,0,0.1)" }}
+      className={containerClassName}
+    >
       <Table<T>
         dataSource={dataSource}
         columns={columns}
@@ -57,7 +61,7 @@ const DataTable = <T extends object>({
         }}
         {...restTableProps}
       />
-    </div>
+    </Card>
   );
 };
 

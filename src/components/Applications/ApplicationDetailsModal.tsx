@@ -1,5 +1,5 @@
 import React from "react";
-import { useNavigate } from "react-router-dom"; // Added useNavigate
+import { useNavigate } from "react-router-dom";
 import { Button, Descriptions, Divider, Avatar, Typography, Empty } from "antd";
 import {
   UserOutlined,
@@ -7,10 +7,11 @@ import {
   FileOutlined,
   FilePdfOutlined,
 } from "@ant-design/icons";
+
 import { Application } from "../../types";
 import ApplicationStatusBadge from "./ApplicationStatusBadge";
-import { formatDate } from "../../utils/formatDate";
 import DetailsModal from "../common/DetailsModal";
+import { formatDate } from "../../utils/formatDate";
 
 const { Title, Text, Paragraph } = Typography;
 

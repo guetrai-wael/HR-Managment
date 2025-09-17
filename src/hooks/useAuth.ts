@@ -1,18 +1,18 @@
-import { message } from "antd"; // Used by loginWithGoogle and getSession
-import supabase from "../services/supabaseClient";
 import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
+import { message } from "antd";
 import {
   Session,
   User,
   AuthError,
   SignInWithPasswordCredentials,
 } from "@supabase/supabase-js";
-import { useMutationHandler } from "./useMutationHandler";
-import { useQueryClient } from "@tanstack/react-query";
 
-// Specific type for successful login data
+import supabase from "../services/supabaseClient";
+import { useMutationHandler } from "./useMutationHandler";
+
+// Type definitions for mutation data
 type LoginData = { user: User; session: Session };
-// Specific type for successful register data
 type RegisterData = { user: User; session: Session | null };
 type LogoutData = void;
 
@@ -25,8 +25,31 @@ interface RegisterMutationVariables {
 }
 
 /**
- * Custom hook for handling authentication operations
- * Provides login, register, logout and session management functions
+ * Hook for handling all authentication operations
+ *
+ * Provides comprehensive authentication functionality including login,
+ * registration, logout, Google OAuth, and session management.
+ *
+ * @returns Object containing authentication actions and states
+ *
+ * @example
+ * ```typescript
+ * const { actions, isLoading, error } = useAuth();
+ *
+ * // Login
+ * await actions.login({ email: 'user@example.com', password: 'password' });
+ *
+ * // Register
+ * await actions.register({
+ *   email: 'user@example.com',
+ *   password: 'password',
+ *   firstName: 'John',
+ *   lastName: 'Doe'
+ * });
+ *
+ * // Logout
+ * await actions.logout();
+ * ```
  */
 export const useAuth = () => {
   const navigate = useNavigate();
@@ -118,7 +141,7 @@ export const useAuth = () => {
   };
 
   /**
-   * Register a new user with email and password, and now firstName, lastName
+   * Register a new user with email and password, and firstName, lastName
    */
   const register = async (
     email: string,
@@ -195,23 +218,30 @@ export const useAuth = () => {
   };
 
   // Consolidated loading state from relevant mutations
-  const loading =
+  const isLoading =
     loginMutation.isPending ||
     registerMutation.isPending ||
     logoutMutation.isPending;
 
+  const error =
+    loginMutation.error || registerMutation.error || logoutMutation.error;
+
   return {
-    login,
-    register,
-    loginWithGoogle,
-    logout,
-    getSession,
-    loading,
-    isLoadingLogin: loginMutation.isPending,
-    isLoadingRegister: registerMutation.isPending,
-    isLoadingLogout: logoutMutation.isPending,
-    loginError: loginMutation.error,
-    registerError: registerMutation.error,
-    logoutError: logoutMutation.error,
+    // Data (no persistent data for auth operations)
+    data: null,
+
+    // Loading states
+    isLoading,
+    isError: !!error,
+    error,
+
+    // Actions
+    actions: {
+      login,
+      register,
+      loginWithGoogle,
+      logout,
+      getSession,
+    },
   };
 };

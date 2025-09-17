@@ -10,14 +10,20 @@ const { TextArea } = Input;
 
 const ApplicationForm: React.FC<ApplicationFormProps> = ({
   jobId,
-  jobTitle,
+  jobTitle: _jobTitle,
   onSuccess,
   onCancel,
 }) => {
   const [form] = Form.useForm();
   const [fileList, setFileList] = useState<UploadFile[]>([]);
   const { user } = useUser();
-  const { submitApplication, isSubmitting } = useApplicationActions();
+
+  // 🆕 NEW: Using standardized structure
+  const {
+    actions,
+    isLoading,
+    error: applicationError,
+  } = useApplicationActions();
 
   const handleSubmit = async (values: ApplicationFormValues) => {
     if (!user) {
@@ -36,19 +42,33 @@ const ApplicationForm: React.FC<ApplicationFormProps> = ({
         ? (fileList[0].originFileObj as File)
         : undefined;
 
-    await submitApplication(
-      { applicationData, resumeFile },
-      {
-        onSuccess: () => {
-          form.resetFields();
-          setFileList([]);
-          onSuccess();
-        },
-        onError: (error) => {
-          console.error("Submission error in component:", error);
-        },
+    console.log("[ApplicationForm] File list:", fileList);
+    console.log("[ApplicationForm] File list length:", fileList.length);
+    if (fileList.length > 0) {
+      console.log("[ApplicationForm] First file:", fileList[0]);
+      console.log(
+        "[ApplicationForm] Origin file obj:",
+        fileList[0].originFileObj
+      );
+    }
+    console.log("[ApplicationForm] Resume file to submit:", resumeFile);
+
+    try {
+      // 🆕 NEW: Using actions.submitApplication instead of direct submitApplication
+      await actions.submitApplication({ applicationData, resumeFile });
+
+      // 🆕 NEW: Success handling moved to try block
+      form.resetFields();
+      setFileList([]);
+      onSuccess();
+    } catch (submitError) {
+      // 🆕 NEW: Enhanced error handling with centralized applicationError
+      console.error("Application submission failed:", submitError);
+      if (applicationError) {
+        console.error("Application hook error:", applicationError);
       }
-    );
+      message.error("Failed to submit application. Please try again.");
+    }
   };
 
   const beforeUpload = (file: RcFile) => {
@@ -69,7 +89,21 @@ const ApplicationForm: React.FC<ApplicationFormProps> = ({
     if (!((isPDF || isDocx) && isLt5M)) {
       return Upload.LIST_IGNORE;
     }
-    setFileList([file as UploadFile]);
+
+    // Create a proper UploadFile object with the original file
+    const uploadFile: UploadFile = {
+      uid: file.uid || Date.now().toString(),
+      name: file.name,
+      status: "done",
+      originFileObj: file,
+    };
+
+    setFileList([uploadFile]);
+    console.log("[ApplicationForm] beforeUpload - file set:", uploadFile);
+    console.log(
+      "[ApplicationForm] beforeUpload - originFileObj:",
+      uploadFile.originFileObj
+    );
     return false;
   };
 
@@ -79,7 +113,6 @@ const ApplicationForm: React.FC<ApplicationFormProps> = ({
 
   return (
     <Form form={form} layout="vertical" onFinish={handleSubmit}>
-      <h3 className="text-lg font-medium mb-4">Apply for: {jobTitle}</h3>
       <div className="space-y-6">
         <Form.Item
           name="coverLetter"
@@ -114,7 +147,7 @@ const ApplicationForm: React.FC<ApplicationFormProps> = ({
           primaryActionText="Submit Application"
           onPrimaryAction={() => form.submit()}
           primaryActionProps={{
-            loading: isSubmitting,
+            loading: isLoading,
             // Remove htmlType="submit" to prevent double submission
           }}
           secondaryActionText="Cancel"

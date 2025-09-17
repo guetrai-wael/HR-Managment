@@ -42,6 +42,21 @@ export function StatisticsCards({
     );
   }
 
+  // Show empty state if no role is detected
+  if (!isAdmin && !isEmployee) {
+    return (
+      <Row gutter={[16, 16]}>
+        <Col span={24}>
+          <Card>
+            <div className="text-center py-8">
+              <p>Please wait while we determine your access level...</p>
+            </div>
+          </Card>
+        </Col>
+      </Row>
+    );
+  }
+
   if (isAdmin) {
     return (
       <Row gutter={[16, 16]}>
@@ -95,45 +110,49 @@ export function StatisticsCards({
         <Col xs={24} sm={12} lg={6}>
           <Card>
             <Statistic
-              title="Vacation"
+              title="Vacation Days"
               value={stats?.vacationDays || 0}
               prefix={
                 <img src={vacationIcon} alt="Vacation" className="w-6 h-6" />
               }
-              suffix="days"
+              suffix="total used"
             />
+            <div className="text-xs text-gray-500 mt-1">Since hiring</div>
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
           <Card>
             <Statistic
-              title="Casual"
+              title="Casual Days"
               value={stats?.casualDays || 0}
               prefix={<img src={casualIcon} alt="Casual" className="w-6 h-6" />}
-              suffix="days"
+              suffix="total used"
             />
+            <div className="text-xs text-gray-500 mt-1">Since hiring</div>
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
           <Card>
             <Statistic
-              title="Personal"
+              title="Personal Days"
               value={stats?.personalDays || 0}
               prefix={
                 <img src={personalIcon} alt="Personal" className="w-6 h-6" />
               }
-              suffix="days"
+              suffix="total used"
             />
+            <div className="text-xs text-gray-500 mt-1">Since hiring</div>
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
           <Card>
             <Statistic
-              title="Sick"
+              title="Sick Days"
               value={stats?.sickDays || 0}
               prefix={<img src={sickIcon} alt="Sick" className="w-6 h-6" />}
-              suffix="days"
+              suffix="total used"
             />
+            <div className="text-xs text-gray-500 mt-1">Since hiring</div>
           </Card>
         </Col>
       </Row>
@@ -152,3 +171,5 @@ export function StatisticsCards({
     </Row>
   );
 }
+
+export default StatisticsCards;

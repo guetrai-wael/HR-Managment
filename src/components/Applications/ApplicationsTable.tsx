@@ -6,6 +6,7 @@ import {
   CloseOutlined,
   ExclamationCircleFilled,
   MessageOutlined,
+  DeleteOutlined,
 } from "@ant-design/icons";
 import { IconBuildingSkyscraper } from "@tabler/icons-react"; // Added
 import { Application } from "../../types";
@@ -25,6 +26,7 @@ interface ApplicationsTableProps {
   onAccept: (id: number, applicantName: string) => void;
   onReject: (id: number, applicantName: string) => void;
   onInterview: (id: number, applicantName: string) => void;
+  onCancel?: (id: number, applicantName: string) => void;
 }
 
 const ApplicationsTable: React.FC<ApplicationsTableProps> = ({
@@ -35,6 +37,7 @@ const ApplicationsTable: React.FC<ApplicationsTableProps> = ({
   onAccept,
   onReject,
   onInterview,
+  onCancel,
 }) => {
   // --- Confirmation Modals ---
   const showConfirm = (
@@ -54,43 +57,58 @@ const ApplicationsTable: React.FC<ApplicationsTableProps> = ({
     });
   };
 
-  const columns = [
+  const allColumns = [
+    // Only show applicant column for admin users
+    ...(isAdmin
+      ? [
+          {
+            title: "Applicant",
+            dataIndex: "profile",
+            key: "applicant",
+            render: (_value: unknown, record: Application) => (
+              <UserAvatar
+                src={record.profile?.avatar_url}
+                firstName={record.profile?.first_name}
+                lastName={record.profile?.last_name}
+                email={record.profile?.email}
+                showName={true}
+                size={32}
+                containerClassName="flex items-center space-x-2 py-1"
+                nameClassName="font-medium truncate max-w-[150px]"
+                emailClassName="text-xs text-gray-500 truncate max-w-[150px]"
+              />
+            ),
+          },
+        ]
+      : []),
+    // Job Title Column
     {
-      title: "Applicant",
-      dataIndex: "profile",
-      key: "applicant",
-      render: (_value: unknown, record: Application) => (
-        <UserAvatar
-          src={record.profile?.avatar_url}
-          firstName={record.profile?.first_name}
-          lastName={record.profile?.last_name}
-          email={isAdmin ? record.profile?.email : undefined} // Show email only for admin
-          showName={true}
-          size={32} // Increased size from "small" to a numeric value for more control
-          containerClassName="flex items-center space-x-2 py-1" // space-x-2 provides gap
-          nameClassName="font-medium truncate max-w-[150px]"
-          emailClassName="text-xs text-gray-500 truncate max-w-[150px]"
-        />
-      ),
-    },
-    // Job Info (No change)
-    {
-      title: "Job & Department", // Renamed from "Job Position"
+      title: "Job Title",
       dataIndex: "job",
-      key: "job_department", // Renamed from "job_title"
+      key: "job_title",
       render: (_value: unknown, record: Application) => (
-        <div className="flex flex-col">
-          <span className="truncate block max-w-[200px] font-medium">
-            {record.job?.title || "Unknown Job"}
-          </span>
-          <span className="text-xs text-gray-500 flex items-center">
-            <IconBuildingSkyscraper size={14} className="mr-1" />{" "}
-            {/* Changed icon */}
+        <span className="font-medium truncate block max-w-[180px]">
+          {record.job?.title || "Unknown Job"}
+        </span>
+      ),
+      width: 200,
+      responsive: ["sm" as const],
+    },
+    // Department Column
+    {
+      title: "Department",
+      dataIndex: "job",
+      key: "department",
+      render: (_value: unknown, record: Application) => (
+        <span className="flex items-center text-sm">
+          <IconBuildingSkyscraper size={14} className="mr-1" />
+          <span className="truncate max-w-[120px]">
             {record.job?.department?.name || "No Department"}
           </span>
-        </div>
+        </span>
       ),
-      responsive: ["sm" as const],
+      width: 150,
+      responsive: ["md" as const],
     },
     // Date Applied (No change)
     {
@@ -117,7 +135,7 @@ const ApplicationsTable: React.FC<ApplicationsTableProps> = ({
     {
       title: "Actions",
       key: "actions",
-      width: isAdmin ? 150 : 80, // Adjusted width
+      width: isAdmin ? 150 : 100, // Adjusted width for employee cancel button
       fixed: "right" as const,
       render: (_value: unknown, record: Application) => {
         const applicantName =
@@ -209,11 +227,35 @@ const ApplicationsTable: React.FC<ApplicationsTableProps> = ({
                 />
               </Tooltip>
             )}
+
+            {/* Cancel Button (Employee Only for their pending applications) */}
+            {!isAdmin && record.status === "pending" && onCancel && (
+              <Tooltip title="Cancel Application">
+                <Button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    showConfirm(
+                      `Cancel your application for ${record.job?.title}?`,
+                      "This action cannot be undone. Your application will be permanently removed.",
+                      () => onCancel(record.id, applicantName),
+                      "danger"
+                    );
+                  }}
+                  type="text"
+                  icon={<DeleteOutlined style={{ color: "#ff4d4f" }} />}
+                  size="small"
+                  aria-label="Cancel application"
+                  danger
+                />
+              </Tooltip>
+            )}
           </div>
         );
       },
     },
   ];
+
+  const columns = allColumns;
 
   return (
     <DataTable<Application>

@@ -173,3 +173,5 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
     </Card>
   );
 };
+
+export default ActivityFeed;

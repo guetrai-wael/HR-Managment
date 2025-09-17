@@ -1,7 +1,4 @@
-import { useCallback, useMemo } from "react";
-import { useUser, useRole } from "../../hooks/index";
-import { formatRoleForDisplay } from "../../types/roles";
-import { useAuth } from "../../hooks/useAuth";
+import React, { useCallback, useMemo } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   IconHome,
@@ -11,23 +8,32 @@ import {
   IconVideo,
   IconSettings,
   IconLogout,
-  IconCalendarEvent, // Used for all Leaves links
+  IconCalendarEvent,
 } from "@tabler/icons-react";
 
+import { formatRoleForDisplay } from "../../types/roles";
+import UserAvatar from "./UserAvatar";
+import { useUser, useRole } from "../../hooks";
+import { useAuth } from "../../hooks/useAuth";
 import Logo from "../../assets/icons/Logo.svg";
-import UserAvatar from "./UserAvatar"; // Import UserAvatar
 
 const Sidebar: React.FC = () => {
   const { user, profile, profileLoading } = useUser();
-  const { isAdmin, isEmployee, isJobSeeker, roleName } = useRole();
+
+  // 🆕 NEW: Using pure standardized structure
+  const {
+    data: { isAdmin, isEmployee, isJobSeeker, roleName },
+  } = useRole();
   const location = useLocation();
-  const { logout } = useAuth();
+
+  // 🆕 NEW: Using standardized structure
+  const { actions } = useAuth();
 
   const isActive = useCallback(
     (path: string) => {
-      // Special handling for dashboard - both "/" and "/dashboard" should be active
-      if (path === "/dashboard") {
-        return location.pathname === "/" || location.pathname === "/dashboard";
+      // Special handling for dashboard root path
+      if (path === "/") {
+        return location.pathname === "/";
       }
       return location.pathname === path;
     },
@@ -43,7 +49,7 @@ const Sidebar: React.FC = () => {
             {
               icon: <IconHome stroke={1.5} />,
               text: "Dashboard",
-              path: "/dashboard",
+              path: "/",
             },
           ]
         : []),
@@ -228,7 +234,7 @@ const Sidebar: React.FC = () => {
 
           {/* Logout Button */}
           <button
-            onClick={() => logout()}
+            onClick={() => actions.logout()}
             className="w-[36px] h-[36px] flex items-center justify-center rounded-md hover:bg-gray-100"
             aria-label="Logout"
           >

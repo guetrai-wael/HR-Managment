@@ -3,23 +3,17 @@ import React from "react";
 import { useForm, SubmitHandler, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
-import { leaveService } from "../../services/api/leaveService";
+import {
+  leaveTypeService,
+  leaveBalanceService,
+  leaveRequestService,
+} from "../../services/api/hr";
 import { LeaveType, LeaveRequest } from "../../types/models";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  Button,
-  Input,
-  Select,
-  DatePicker,
-  Form,
-  Card,
-  Typography,
-  message,
-} from "antd";
+import { Button, Input, Select, DatePicker, Form, message } from "antd";
 import dayjs, { Dayjs } from "dayjs";
 const { TextArea } = Input;
 const { Option } = Select;
-const { Title } = Typography;
 
 // Validation Schema using Yup
 const leaveRequestSchema = yup.object().shape({
@@ -84,7 +78,7 @@ const LeaveRequestForm: React.FC<LeaveRequestFormProps> = ({
     Error
   >({
     queryKey: ["leaveTypes"],
-    queryFn: leaveService.getLeaveTypes,
+    queryFn: leaveTypeService.getLeaveTypes,
   });
 
   // Fetch current leave balance
@@ -93,7 +87,7 @@ const LeaveRequestForm: React.FC<LeaveRequestFormProps> = ({
     Error
   >({
     queryKey: ["myLeaveBalance"],
-    queryFn: leaveService.getMyLeaveBalance,
+    queryFn: leaveBalanceService.getMyLeaveBalance,
   });
 
   const {
@@ -131,7 +125,7 @@ const LeaveRequestForm: React.FC<LeaveRequestFormProps> = ({
       | "admin_rejection_reason"
     > & { start_date: string; end_date: string } // Ensure string dates for API
   >({
-    mutationFn: (data) => leaveService.createLeaveRequest(data),
+    mutationFn: (data) => leaveRequestService.createLeaveRequest(data),
     onSuccess: () => {
       message.success("Leave request submitted successfully!");
       queryClient.invalidateQueries({ queryKey: ["myLeaveRequests"] });
@@ -191,11 +185,7 @@ const LeaveRequestForm: React.FC<LeaveRequestFormProps> = ({
     currentBalance !== undefined && daysRequested > currentBalance;
 
   return (
-    <Card
-      title={<Title level={4}>Submit Leave Request</Title>}
-      variant="borderless" // Changed from bordered={false}
-      style={{ boxShadow: "0 0 10px rgba(0,0,0,0.1)" }}
-    >
+    <>
       {/* Leave Balance Display */}
       <div
         style={{
@@ -368,7 +358,7 @@ const LeaveRequestForm: React.FC<LeaveRequestFormProps> = ({
           </Button>
         </Form.Item>
       </Form>
-    </Card>
+    </>
   );
 };
 

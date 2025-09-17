@@ -81,27 +81,34 @@ _📝 Please run the column queries above for each table and paste the results. 
 
 **Purpose**: Extended user profile information (links to Supabase auth.users)
 
-| Column            | Type        | Nullable | Default  | Description                         |
-| ----------------- | ----------- | -------- | -------- | ----------------------------------- |
-| id                | uuid        | NO       | -        | Primary key (matches auth.users.id) |
-| email             | text        | NO       | -        | User email address                  |
-| phone             | text        | YES      | -        | Phone number                        |
-| position          | text        | YES      | -        | Current job position                |
-| created_at        | timestamptz | YES      | now()    | Profile creation timestamp          |
-| updated_at        | timestamptz | YES      | -        | Last update timestamp               |
-| department_id     | integer     | YES      | -        | Foreign key to departments          |
-| hiring_date       | date        | YES      | -        | Employee hiring date                |
-| physical_address  | text        | YES      | -        | Home address                        |
-| bio               | text        | YES      | -        | Biography/description               |
-| employment_status | text        | YES      | 'Active' | Active, Inactive, Terminated        |
-| avatar_url        | text        | YES      | -        | Profile picture URL                 |
-| first_name        | text        | YES      | -        | First name                          |
-| last_name         | text        | YES      | -        | Last name                           |
+| Column               | Type        | Nullable | Default  | Description                                    |
+| -------------------- | ----------- | -------- | -------- | ---------------------------------------------- |
+| id                   | uuid        | NO       | -        | Primary key (matches auth.users.id)            |
+| email                | text        | NO       | -        | User email address                             |
+| phone                | text        | YES      | -        | Phone number                                   |
+| position             | text        | YES      | -        | Current job position                           |
+| created_at           | timestamptz | YES      | now()    | Profile creation timestamp                     |
+| updated_at           | timestamptz | YES      | -        | Last update timestamp                          |
+| department_id        | integer     | YES      | -        | Foreign key to departments                     |
+| hiring_date          | date        | YES      | -        | Employee hiring date                           |
+| physical_address     | text        | YES      | -        | Home address                                   |
+| bio                  | text        | YES      | -        | Biography/description                          |
+| employment_status    | text        | YES      | 'Active' | Active, Inactive, Terminated                   |
+| avatar_url           | text        | YES      | -        | Profile picture URL                            |
+| first_name           | text        | YES      | -        | First name                                     |
+| last_name            | text        | YES      | -        | Last name                                      |
+| carried_forward_days | integer     | NO       | 0        | Leave days carried from previous year (max 48) |
 
 **Relationships:**
 
 - `id` → `auth.users(id)` (one-to-one)
 - `department_id` → `departments(id)`
+
+**Leave System Notes:**
+
+- `hiring_date` determines anniversary-based leave years (e.g., hired Jan 15 = leave years run Jan 15 - Jan 14)
+- `carried_forward_days` stores unused leave days from previous anniversary year
+- Maximum total annual entitlement: 72 days (24 base + 48 max carryover)
 
 #### jobs ✅
 
@@ -223,6 +230,73 @@ _📝 Please run the column queries above for each table and paste the results. 
 
 - `user_id` → `auth.users(id)` / `profiles(id)`
 - `role_id` → `roles(id)`
+
+---
+
+## 🏖️ **Leave Balance System (Updated 2025)**
+
+### **Anniversary-Based Leave Years**
+
+The system uses **hiring anniversary** instead of calendar years:
+
+- **Hired January 15, 2023** → Leave years run **January 15 - January 14** each year
+- **Each anniversary**: Employee gets 24 new days + carried forward unused days
+- **Maximum annual entitlement**: 72 days (24 base + up to 48 carryover)
+
+### **Balance Calculation Logic**
+
+```javascript
+// Current leave year boundaries
+const getCurrentLeaveYear = (hiringDate) => {
+  const today = new Date();
+  const currentYearStart = new Date(
+    today.getFullYear(),
+    hiringDate.getMonth(),
+    hiringDate.getDate()
+  );
+
+  if (today < currentYearStart) {
+    // Before anniversary this year, so still in previous leave year
+    return {
+      start: new Date(
+        today.getFullYear() - 1,
+        hiringDate.getMonth(),
+        hiringDate.getDate()
+      ),
+      end: new Date(currentYearStart.getTime() - 86400000), // Day before anniversary
+    };
+  } else {
+    // After anniversary, in current leave year
+    return {
+      start: currentYearStart,
+      end: new Date(
+        today.getFullYear() + 1,
+        hiringDate.getMonth(),
+        hiringDate.getDate() - 1
+      ),
+    };
+  }
+};
+
+// Annual entitlement calculation
+const annualEntitlement = 24 + Math.min(carried_forward_days, 48); // Max 72 days total
+const remainingBalance = annualEntitlement - usedDaysThisLeaveYear;
+```
+
+### **Dashboard Statistics**
+
+- **Balance**: Current remaining days for this leave year
+- **Statistics**: Lifetime totals by leave type since hiring
+  - Total vacation days taken (all time)
+  - Total sick days taken (all time)
+  - Total personal days taken (all time)
+  - Total casual days taken (all time)
+
+### **Carryover Management**
+
+- **End of leave year**: Unused days automatically carry forward to next year
+- **Maximum carryover**: 48 days (prevents excessive accumulation)
+- **Formula**: `Next Year Entitlement = 24 + MIN(unused_days, 48)`
 
 ---
 

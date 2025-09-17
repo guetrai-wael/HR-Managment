@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useUser } from "./";
-import supabase from "../services/supabaseClient";
+
 import {
   ROLE_NAMES,
   isAdminRole,
@@ -8,14 +7,41 @@ import {
   isJobSeekerRole,
   type RoleName,
 } from "../types/roles";
+import supabase from "../services/supabaseClient";
+import { useUser } from "./useUser";
 
+/**
+ * Hook for determining the current user's role and permissions
+ *
+ * Fetches and manages user role information, providing boolean flags
+ * for different role types and loading states.
+ *
+ * @returns Object containing role information and loading state
+ *
+ * @example
+ * ```typescript
+ * const { isAdmin, isEmployee, isJobSeeker, roleName, isLoading } = useRole();
+ *
+ * if (isLoading) {
+ *   return <LoadingSpinner />;
+ * }
+ *
+ * if (isAdmin) {
+ *   return <AdminDashboard />;
+ * }
+ * ```
+ */
 export const useRole = () => {
   const { user, authLoading, profile, profileLoading } = useUser();
+
+  // State declarations
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [isEmployee, setIsEmployee] = useState<boolean>(false);
   const [isJobSeeker, setIsJobSeeker] = useState<boolean>(false);
   const [roleName, setRoleName] = useState<RoleName | null>(null);
   const [roleCheckLoading, setRoleCheckLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
   const currentUserId = useRef<string | null>(null);
 
   useEffect(() => {
@@ -48,12 +74,14 @@ export const useRole = () => {
 
             if (error) {
               console.error("useRole: Error fetching user role:", error);
+              setError(new Error(error.message || "Failed to fetch user role"));
               // Set default role on error
               setRoleName(ROLE_NAMES.JOB_SEEKER);
               setIsAdmin(false);
               setIsEmployee(false);
               setIsJobSeeker(true);
             } else {
+              setError(null); // Clear any previous errors
               // Extract role name from the nested data (handle array response)
               const roleData = Array.isArray(data?.roles)
                 ? data.roles[0]
@@ -80,7 +108,8 @@ export const useRole = () => {
 
         checkUserRole(user.id);
       }
-    } else {
+    } else if (!authLoading && !profileLoading) {
+      // Only set loading to false if we're sure auth and profile loading are complete
       setRoleCheckLoading(false);
       setRoleName(null);
       setIsAdmin(false);
@@ -90,11 +119,20 @@ export const useRole = () => {
   }, [user, profile, authLoading, profileLoading]);
 
   return {
-    isAdmin,
-    isEmployee,
-    isJobSeeker,
-    roleName,
-    roleCheckLoading,
-    loading: roleCheckLoading, // Backward compatibility alias
+    // Data
+    data: {
+      isAdmin,
+      isEmployee,
+      isJobSeeker,
+      roleName,
+    },
+
+    // Loading states
+    isLoading: roleCheckLoading,
+    isError: !!error,
+    error,
+
+    // Actions (none for this hook)
+    actions: {},
   };
 };

@@ -1,15 +1,16 @@
 @import "tailwindcss";
 
 /*----------------------------------------*/
-/* GLOBAL BUTTON STYLES                   */
+/* BRAND COLORS & ANT DESIGN OVERRIDES    */
 /*----------------------------------------*/
 
-/* Primary button styles */
+/* Primary button theme - Purple brand colors */
 .ant-btn-primary {
     background-color: #7c3aed !important;
     border-color: #7c3aed !important;
     height: 44px !important;
     border-radius: 8px !important;
+    font-weight: 500 !important;
 }
 
 .ant-btn-primary:hover,
@@ -24,188 +25,48 @@
 }
 
 .ant-btn-primary[disabled],
-.ant-btn-primary[disabled]:hover,
-.ant-btn-primary[disabled]:focus,
-.ant-btn-primary[disabled]:active {
+.ant-btn-primary[disabled]:hover {
     background-color: #d8b4fe !important;
     border-color: #d8b4fe !important;
     opacity: 0.7;
 }
 
-/* Default/Secondary button styles */
+/* Default button styling */
 .ant-btn-default {
     height: 44px !important;
     border-radius: 8px !important;
-    border-color: #d9d9d9 !important;
     font-weight: 500 !important;
-    font-size: 16px !important;
-}
-
-/* Common button styles */
-.ant-btn {
-    font-weight: 500 !important;
-    font-size: 16px !important;
-}
-
-/* Form action buttons container */
-.form-actions-container {
-    display: flex;
-    gap: 12px;
-    margin-top: 24px;
-}
-
-.form-actions-container .ant-btn {
-    flex: 1;
 }
 
 /*----------------------------------------*/
-/* JOB CARD STYLES                        */
+/* ESSENTIAL COMPONENT OVERRIDES          */
 /*----------------------------------------*/
 
-.job-card {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    width: 100%;
-    transition: all 0.2s ease;
-    position: relative;
-}
-
-.job-card-content {
-    flex: 1;
-    min-width: 0;
-    /* Important for text truncation */
-}
-
-.job-card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    width: 100%;
-    gap: 8px;
-}
-
-.job-card-title {
-    font-weight: 500;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: calc(100% - 70px);
-}
-
-.job-card-actions {
-    display: flex;
-    flex-shrink: 0;
-    gap: 4px;
-    margin-left: auto;
-}
-
-.job-card-footer {
-    margin-top: auto;
-}
-
+/* Job card hover animation */
 .job-card:hover {
     transform: translateY(-2px);
     box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease;
+}
+
+/* Table hover effects */
+.ant-table-row:hover {
+    background-color: #f5f8ff !important;
+}
+
+/* Table header styling */
+.ant-table-thead>tr>th {
+    background-color: #f9fafb !important;
+    font-weight: 500 !important;
 }
 
 /*----------------------------------------*/
-/* JOB DETAILS STYLES                     */
+/* MOBILE RESPONSIVENESS FIXES            */
 /*----------------------------------------*/
 
-/* Job details table layout */
-.job-details-table {
-    max-width: 600px;
-    /* Appropriate width for single-column layout */
-}
-
-/* Description component styling */
-.job-details-descriptions .ant-descriptions-item {
-    padding: 12px !important;
-}
-
-.job-details-descriptions .ant-descriptions-item-label {
-    width: 140px;
-    background-color: #f9fafb;
-}
-
-.job-details-descriptions .ant-descriptions-item-label,
-.job-details-descriptions .ant-descriptions-item-content {
-    word-break: break-word;
-}
-
-/*----------------------------------------*/
-/* APPLICATION STYLES                     */
-/*----------------------------------------*/
-
-/* Application table */
-.applications-table .ant-table-thead>tr>th {
-    background-color: #f9fafb;
-    font-weight: 500;
-    white-space: nowrap;
-}
-
-.applications-table .ant-table-row:hover {
-    background-color: #f5f8ff;
-}
-
-/* Application filters */
-.application-filters .ant-form-item {
-    margin-bottom: 12px;
-}
-
-/* Application details modal */
-.application-details-modal .ant-descriptions-item-label {
-    width: 120px;
-    font-weight: 500;
-}
-
-/* Utility for truncated columns */
-.truncate-column {
-    max-width: 150px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-/*----------------------------------------*/
-/* RESPONSIVE STYLES                      */
-/*----------------------------------------*/
-
-/* Mobile styles (small screens) */
 @media (max-width: 640px) {
 
-    /* Global styles */
-    .px-8 {
-        padding-left: 1rem;
-        padding-right: 1rem;
-    }
-
-    /* Form and button styles */
-    .ant-btn-primary {
-        height: 40px !important;
-    }
-
-    .ant-form-item .ant-input,
-    .ant-form-item .ant-select,
-    .ant-form-item .ant-picker,
-    .ant-form-item .ant-btn {
-        width: 100% !important;
-    }
-
-    .ant-btn {
-        margin-bottom: 8px !important;
-    }
-
-    .ant-btn-sm {
-        padding: 0 8px !important;
-    }
-
-    .ant-form-item-label {
-        padding-bottom: 4px !important;
-    }
-
-    /* Modal styles */
+    /* Modal responsive fixes */
     .ant-modal {
         max-width: 95% !important;
         margin: 0 auto !important;
@@ -215,228 +76,32 @@
         padding: 16px 12px !important;
     }
 
-    /* Description items */
-    .ant-descriptions-item-label,
-    .ant-descriptions-item-content {
-        padding: 8px !important;
+    /* Table responsive fixes */
+    .ant-table-cell {
+        padding: 8px 4px !important;
         font-size: 14px !important;
     }
 
-    /* Job card styles */
-    .job-card {
-        min-height: unset !important;
+    /* Button responsive fixes */
+    .ant-btn-primary {
+        height: 40px !important;
     }
 
-    .job-card-actions {
-        z-index: 5 !important;
-    }
-
-    .job-card-actions .ant-btn {
-        min-width: 32px !important;
-        width: 32px !important;
-        height: 32px !important;
-        padding: 0 !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-    }
-
-    .job-card-title {
-        max-width: calc(100% - 80px) !important;
-        font-size: 15px !important;
-    }
-
-    /* Header styles */
-    h1.text-3xl {
-        font-size: 1.5rem !important;
-    }
-
-    /* Table styles */
-    .responsive-table .ant-table-cell {
-        padding: 8px 4px !important;
-        white-space: normal !important;
-        word-break: break-word !important;
-    }
-
-    .hide-on-mobile {
-        display: none !important;
-    }
-
-    /* Application table styles */
-    .applications-table .ant-table-cell {
-        padding: 8px !important;
-    }
-
-    .applications-table .ant-pagination-item,
-    .applications-table .ant-pagination-prev,
-    .applications-table .ant-pagination-next {
+    /* Pagination fixes */
+    .ant-pagination-item,
+    .ant-pagination-prev,
+    .ant-pagination-next {
         min-width: 28px !important;
         height: 28px !important;
         line-height: 26px !important;
     }
-
-    .applications-table .ant-pagination-total-text {
-        display: none;
-    }
-
-    .applications-table .ant-btn {
-        min-height: 32px;
-        min-width: 32px;
-    }
-
-    /* Job details styles */
-    .job-details-descriptions {
-        font-size: 14px;
-    }
-
-    .job-details-descriptions .ant-descriptions-item-label,
-    .job-details-descriptions .ant-descriptions-item-content {
-        padding: 10px 12px !important;
-    }
-
-    /* Modal styles */
-    .job-application-modal .ant-modal-body {
-        padding: 12px !important;
-        max-height: 80vh;
-        overflow-y: auto;
-    }
-}
-
-/* Tablet styles (medium screens) */
-@media (max-width: 768px) {
-
-    /* Application filters */
-    .application-filters .ant-form-item {
-        margin-bottom: 8px;
-    }
-
-    .application-filters .ant-form-item-label {
-        padding-bottom: 4px;
-    }
-
-    .application-filters .ant-select,
-    .application-filters .ant-picker,
-    .application-filters .ant-input {
-        min-height: 36px;
-    }
-
-    /* Application modal */
-    .application-details-modal .ant-modal-body {
-        max-height: 70vh;
-        overflow-y: auto;
-    }
-}
-
-/* Medium screens */
-@media (min-width: 641px) and (max-width: 1024px) {
-    .px-8 {
-        padding-left: 1.5rem !important;
-        padding-right: 1.5rem !important;
-    }
-
-    .ant-table-cell {
-        padding: 12px 8px !important;
-    }
-}
-
-/* Desktop styles */
-@media (min-width: 640px) {
-    .form-actions-container .ant-btn {
-        flex: 0 0 auto;
-        min-width: 120px;
-    }
 }
 
 /*----------------------------------------*/
-/* USER PROFILE PAGE RESPONSIVE STYLES    */
+/* SETTINGS PAGE STYLES                   */
 /*----------------------------------------*/
 
-/* Responsive descriptions for profile pages */
-.responsive-descriptions {
-    overflow-x: auto;
-}
-
-.responsive-descriptions .ant-descriptions-item-label,
-.responsive-descriptions .ant-descriptions-item-content {
-    word-break: break-word;
-    white-space: normal;
-}
-
-/* Small screens - ensure proper spacing */
-@media (max-width: 575px) {
-    .responsive-descriptions .ant-descriptions-item {
-        padding: 8px !important;
-    }
-
-    .responsive-descriptions .ant-descriptions-item-label {
-        font-size: 13px;
-        min-width: auto !important;
-    }
-
-    .responsive-descriptions .ant-descriptions-item-content {
-        font-size: 14px;
-    }
-}
-
-/* Medium tablet screens (576px - 768px) - critical responsive zone */
-@media (min-width: 576px) and (max-width: 767px) {
-    .responsive-descriptions {
-        font-size: 14px;
-    }
-
-    .responsive-descriptions .ant-descriptions-item {
-        padding: 10px 12px !important;
-    }
-
-    .responsive-descriptions .ant-descriptions-item-label {
-        min-width: 120px !important;
-        max-width: 140px;
-    }
-}
-
-/* Large tablet screens (768px - 991px) - ensure 2-column layout works well */
-@media (min-width: 768px) and (max-width: 991px) {
-    .responsive-descriptions.ant-descriptions-bordered .ant-descriptions-item {
-        padding: 12px 16px !important;
-    }
-
-    .responsive-descriptions .ant-descriptions-item-label {
-        min-width: 140px !important;
-        font-weight: 500;
-    }
-}
-
-/* Profile page specific responsive adjustments */
-@media (max-width: 767px) {
-
-    /* Ensure cards have proper spacing on small screens */
-    .ant-card {
-        margin-bottom: 16px;
-    }
-
-    /* Adjust avatar size on very small screens */
-    .ant-avatar {
-        max-width: 100%;
-        height: auto !important;
-    }
-}
-
-/* Ensure proper gutter spacing on profile pages */
-@media (min-width: 768px) and (max-width: 1199px) {
-    .ant-row {
-        margin-left: -8px !important;
-        margin-right: -8px !important;
-    }
-
-    .ant-col {
-        padding-left: 8px !important;
-        padding-right: 8px !important;
-    }
-}
-
-/* ============= SETTINGS PAGE RESPONSIVE STYLES ============= */
-
-/* Settings page container */
+/* Settings container and card */
 .settings-container {
     max-width: 1000px;
     margin: 0 auto;
@@ -449,31 +114,10 @@
     border: 1px solid #e8e8e8;
 }
 
-.settings-card .ant-card-body {
-    padding: 40px;
-}
-
-/* Avatar upload section */
-.avatar-upload-row {
-    margin-bottom: 32px;
-}
-
-.avatar-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    width: 100%;
-    padding: 24px;
-}
-
+/* Avatar and upload styles */
 .settings-avatar {
     border: 2px solid #f0f0f0;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.upload-col {
-    display: flex;
-    align-items: center;
 }
 
 .settings-upload-dragger {
@@ -481,9 +125,7 @@
     border: 2px dashed #d9d9d9;
     border-radius: 8px;
     transition: all 0.3s ease;
-    width: 100%;
     min-height: 160px;
-    padding: 24px;
 }
 
 .settings-upload-dragger:hover {
@@ -524,10 +166,9 @@
     box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
 }
 
-/* Submit button */
+/* Submit button and container */
 .settings-submit-container {
     margin-top: 32px;
-    margin-bottom: 0;
     text-align: center;
 }
 
@@ -545,231 +186,21 @@
     box-shadow: 0 4px 8px rgba(24, 144, 255, 0.3);
 }
 
-/* Small screens (max-width: 575px) */
-@media (max-width: 575px) {
+/* Responsive settings styles */
+@media (max-width: 640px) {
     .settings-container {
         padding: 0 8px;
-        margin: 0;
-    }
-
-    .settings-card {
-        margin: 8px;
-        border-radius: 8px;
     }
 
     .settings-card .ant-card-body {
-        padding: 16px;
-    }
-
-    .avatar-container {
-        margin-bottom: 16px;
-        padding: 20px 16px;
-    }
-
-    .settings-avatar {
-        width: 100px !important;
-        height: 100px !important;
-        min-width: 100px;
-        min-height: 100px;
+        padding: 16px !important;
     }
 
     .settings-upload-dragger {
         min-height: 120px;
     }
 
-    .settings-upload-dragger .ant-upload-text {
-        font-size: 14px;
-    }
-
-    .settings-upload-dragger .ant-upload-hint {
-        font-size: 12px;
-    }
-
-    .settings-input {
-        font-size: 16px;
-        /* Prevent zoom on iOS */
-    }
-
-    .settings-textarea {
-        font-size: 16px;
-        /* Prevent zoom on iOS */
-    }
-
     .settings-submit-btn {
         width: 100%;
-        height: 48px;
-    }
-
-    .ant-form-item-label>label {
-        font-size: 14px;
-        font-weight: 600;
-    }
-}
-
-/* Medium tablets (576px - 767px) */
-@media (min-width: 576px) and (max-width: 767px) {
-    .settings-container {
-        padding: 0 12px;
-    }
-
-    .settings-card {
-        margin: 12px;
-    }
-
-    .settings-card .ant-card-body {
-        padding: 20px;
-    }
-
-    .avatar-upload-row {
-        margin-bottom: 20px;
-    }
-
-    .avatar-container {
-        padding: 24px 16px;
-        justify-content: center;
-    }
-
-    .upload-col {
-        margin-top: 16px;
-    }
-
-    .settings-avatar {
-        width: 120px !important;
-        height: 120px !important;
-        min-width: 120px;
-        min-height: 120px;
-    }
-
-    .settings-upload-dragger {
-        min-height: 140px;
-    }
-
-    .settings-submit-btn {
-        width: 100%;
-        height: 46px;
-    }
-}
-
-/* Large tablets (768px - 991px) */
-@media (min-width: 768px) and (max-width: 991px) {
-    .settings-container {
-        padding: 0 20px;
-    }
-
-    .settings-card .ant-card-body {
-        padding: 32px;
-    }
-
-    .avatar-upload-row {
-        align-items: stretch;
-    }
-
-    .avatar-container {
-        justify-content: center;
-        padding: 24px 20px;
-        height: 100%;
-        display: flex;
-        align-items: center;
-    }
-
-    .upload-col {
-        display: flex;
-        align-items: stretch;
-    }
-
-    .settings-avatar {
-        width: 140px !important;
-        height: 140px !important;
-        min-width: 140px;
-        min-height: 140px;
-    }
-
-    .settings-upload-dragger {
-        min-height: 180px;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-    }
-
-    .settings-submit-container {
-        text-align: left;
-    }
-
-    .settings-submit-btn {
-        width: auto;
-        min-width: 200px;
-    }
-}
-
-/* Desktop (992px and above) */
-@media (min-width: 992px) {
-    .settings-container {
-        padding: 0 32px;
-    }
-
-    .settings-card .ant-card-body {
-        padding: 48px;
-    }
-
-    .avatar-upload-row {
-        align-items: stretch;
-    }
-
-    .avatar-container {
-        justify-content: center;
-        padding: 32px 24px;
-        height: 100%;
-        display: flex;
-        align-items: center;
-    }
-
-    .upload-col {
-        display: flex;
-        align-items: stretch;
-    }
-
-    .settings-avatar {
-        width: 160px !important;
-        height: 160px !important;
-        min-width: 160px;
-        min-height: 160px;
-    }
-
-    .settings-upload-dragger {
-        min-height: 200px;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-    }
-
-    .settings-submit-container {
-        text-align: left;
-    }
-
-    .settings-submit-btn {
-        width: auto;
-        min-width: 240px;
-    }
-}
-
-/* Extra large screens (1200px and above) */
-@media (min-width: 1200px) {
-    .settings-card .ant-card-body {
-        padding: 56px;
-    }
-
-    .settings-avatar {
-        width: 180px !important;
-        height: 180px !important;
-        min-width: 180px;
-        min-height: 180px;
-    }
-
-    .avatar-container {
-        padding: 40px 32px;
-    }
-
-    .settings-upload-dragger {
-        min-height: 220px;
     }
 }

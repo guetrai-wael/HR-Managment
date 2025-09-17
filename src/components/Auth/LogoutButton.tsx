@@ -16,7 +16,8 @@ const LogoutButton: FC<LogoutButtonProps> = ({
   showIcon = true,
   className = "",
 }) => {
-  const { logout, loading } = useAuth();
+  // 🆕 NEW: Using standardized structure
+  const { actions, isLoading } = useAuth();
 
   return (
     <Button
@@ -24,8 +25,8 @@ const LogoutButton: FC<LogoutButtonProps> = ({
       size={size}
       className={className}
       icon={showIcon ? <LogoutOutlined /> : null}
-      onClick={logout}
-      loading={loading}
+      onClick={actions.logout}
+      loading={isLoading}
     >
       {showIcon ? " Logout" : "Logout"}
     </Button>

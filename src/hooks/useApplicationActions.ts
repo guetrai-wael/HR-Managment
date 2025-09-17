@@ -1,19 +1,19 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { message } from "antd"; // Keep for specific messages if needed, though useMutationHandler handles generic ones
-import supabase from "../services/supabaseClient";
-import {
-  updateApplicationStatus as apiUpdateApplicationStatus,
-  deleteApplication as apiDeleteApplication,
-  createApplication as apiCreateApplication,
-} from "../services/api/applicationService";
-import { Application, FilterValues } from "../types";
-import { useUser } from "./useUser";
-import { useMutationHandler } from "./useMutationHandler"; // Import the new hook
+import { message } from "antd";
 
-// Define interfaces for mutation arguments
+import { Application, FilterValues } from "../types";
+import {
+  applicationCrudService,
+  applicationWorkflowService,
+} from "../services/api/recruitment";
+import supabase from "../services/supabaseClient";
+import { useUser } from "./useUser";
+import { useMutationHandler } from "./useMutationHandler";
+
+// Type definitions for mutation arguments
 interface SubmitApplicationArgs {
   applicationData: Partial<Application>;
-  resumeFile?: File; // Use built-in File type
+  resumeFile?: File;
 }
 
 interface UpdateStatusArgs {
@@ -21,6 +21,30 @@ interface UpdateStatusArgs {
   status: Application["status"];
 }
 
+/**
+ * Hook for managing job application actions and mutations
+ *
+ * Provides CRUD operations for job applications including submission,
+ * status updates, and deletion. Integrates with TanStack Query for
+ * optimistic updates and cache management.
+ *
+ * @param filters - Optional filters to determine which query keys to invalidate
+ * @returns Object containing application actions and loading states
+ *
+ * @example
+ * ```typescript
+ * const { actions, isLoading } = useApplicationActions(currentFilters);
+ *
+ * // Submit new application
+ * await actions.submitApplication({
+ *   applicationData: { job_id: 1, cover_letter: 'Hello...' },
+ *   resumeFile: selectedFile
+ * });
+ *
+ * // Update application status
+ * await actions.updateStatus({ id: 1, status: 'accepted' });
+ * ```
+ */
 export const useApplicationActions = (filters?: FilterValues) => {
   const queryClient = useQueryClient();
   const { user } = useUser();
@@ -40,21 +64,44 @@ export const useApplicationActions = (filters?: FilterValues) => {
         }
         let resumeUrl: string | null = null;
         if (resumeFile) {
+          console.log("[submitApplication] Starting resume upload...");
+          console.log("[submitApplication] File details:", {
+            name: resumeFile.name,
+            size: resumeFile.size,
+            type: resumeFile.type,
+          });
+
           const filePath = `${user.id}/${Date.now()}_${resumeFile.name}`;
+          console.log("[submitApplication] Upload path:", filePath);
+
           const { data: uploadData, error: uploadError } =
             await supabase.storage.from("resumes").upload(filePath, resumeFile);
-          if (uploadError) throw uploadError;
+
+          if (uploadError) {
+            console.error("[submitApplication] Upload error:", uploadError);
+            throw new Error(`Resume upload failed: ${uploadError.message}`);
+          }
+
+          console.log("[submitApplication] Upload successful:", uploadData);
+
           const { data: publicUrlData } = supabase.storage
             .from("resumes")
             .getPublicUrl(uploadData.path);
+
           resumeUrl = publicUrlData.publicUrl;
+          console.log("[submitApplication] Resume URL:", resumeUrl);
+        } else {
+          console.log("[submitApplication] No resume file provided");
         }
         const finalData = {
           ...applicationData,
           user_id: user.id,
           resume_url: resumeUrl,
         };
-        const newApplication = await apiCreateApplication(finalData);
+
+        console.log("[submitApplication] Final application data:", finalData);
+        const newApplication = await applicationCrudService.create(finalData);
+        console.log("[submitApplication] Created application:", newApplication);
         if (!newApplication) {
           throw new Error("Application submission failed at the API level.");
         }
@@ -69,7 +116,14 @@ export const useApplicationActions = (filters?: FilterValues) => {
   // --- Update Application Status Mutation ---
   const { mutateAsync: updateStatus, isPending: isUpdatingStatus } =
     useMutationHandler<Application | null, Error, UpdateStatusArgs>({
-      mutationFn: ({ id, status }) => apiUpdateApplicationStatus(id, status),
+      mutationFn: ({ id, status }) => {
+        // Use approve method for acceptance to handle role conversion and hiring date
+        if (status === "accepted") {
+          return applicationWorkflowService.approve(id);
+        }
+        // Use regular updateStatus for other status changes
+        return applicationWorkflowService.updateStatus(id, status);
+      },
       queryClient,
       // Custom success message to include the status
       onSuccess: (data, variables) => {
@@ -87,21 +141,30 @@ export const useApplicationActions = (filters?: FilterValues) => {
 
   // --- Delete Application Mutation ---
   const { mutateAsync: deleteApplicationAction, isPending: isDeleting } =
-    useMutationHandler<boolean, Error, number>({
-      mutationFn: apiDeleteApplication,
+    useMutationHandler<void, Error, number>({
+      mutationFn: applicationCrudService.delete,
       queryClient,
       successMessage: "Application deleted successfully",
       errorMessagePrefix: "Failed to delete application",
       invalidateQueries: [getApplicationsQueryKey()],
     });
 
+  const isLoading = isSubmitting || isUpdatingStatus || isDeleting;
+
   return {
-    submitApplication,
-    isSubmitting,
-    updateStatus,
-    isUpdatingStatus,
-    deleteApplicationAction,
-    isDeleting,
-    loading: isSubmitting || isUpdatingStatus || isDeleting,
+    // Data (no persistent data for action hooks)
+    data: null,
+
+    // Loading states
+    isLoading,
+    isError: false, // Individual mutations handle their own errors
+    error: null,
+
+    // Actions
+    actions: {
+      submitApplication,
+      updateStatus,
+      deleteApplication: deleteApplicationAction,
+    },
   };
 };

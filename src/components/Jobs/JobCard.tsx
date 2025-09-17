@@ -14,7 +14,7 @@ import { JobCardProps } from "../../types";
 const JobCard: React.FC<JobCardProps> = ({
   title,
   description,
-  status,
+  status: _status, // Unused - status now determined by deadline
   deadline,
   icon = "hot",
   onClick,
@@ -27,17 +27,17 @@ const JobCard: React.FC<JobCardProps> = ({
   showEditButton,
   showDeleteButton,
 }) => {
-  // --- Deadline Logic ---
-  const isPastDeadline = (() => {
-    if (!deadline) return false;
+  // Status determined by deadline only
+  const getJobStatus = () => {
+    if (!deadline) return "Open"; // No deadline means always open
     const deadlineDate = new Date(deadline);
     deadlineDate.setHours(23, 59, 59, 999);
     const today = new Date();
-    return today > deadlineDate;
-  })();
+    return today > deadlineDate ? "Closed" : "Open";
+  };
 
-  const effectiveStatus = isPastDeadline ? "Closed" : status;
-  // --- End Deadline Logic ---
+  const jobStatus = getJobStatus();
+  const isPastDeadline = jobStatus === "Closed";
 
   const iconMap = {
     hot: <FireFilled style={{ color: "#6068CA" }} />,
@@ -55,7 +55,7 @@ const JobCard: React.FC<JobCardProps> = ({
         return { bg: "#F9F5FF", text: "#6941C6" };
     }
   };
-  const statusColor = getStatusColor(effectiveStatus);
+  const statusColor = getStatusColor(jobStatus);
 
   const formatDeadline = (deadlineStr: string | Date | undefined) => {
     if (!deadlineStr) return { formatted: null, daysLeft: null };
@@ -170,7 +170,7 @@ const JobCard: React.FC<JobCardProps> = ({
         )}
 
         {/* Status Badge - Use effectiveStatus */}
-        {effectiveStatus && (
+        {jobStatus && (
           <div className="flex mt-auto mb-3">
             <span
               className="px-2 py-0.5 text-xs font-medium rounded-full"
@@ -179,7 +179,7 @@ const JobCard: React.FC<JobCardProps> = ({
                 color: statusColor?.text,
               }}
             >
-              {effectiveStatus}
+              {jobStatus}
             </span>
           </div>
         )}

@@ -1,8 +1,8 @@
 import React, { useState, useMemo } from "react";
 import { Form, Button } from "antd";
 import { useQuery } from "@tanstack/react-query";
-import { getAllEmployees } from "../../services/api/userService";
-import { fetchDepartments } from "../../services/api/departmentService";
+import { employeeService } from "../../services/api/hr";
+import { departmentService } from "../../services/api/admin";
 import { UserProfile, Department } from "../../types";
 import EmployeeListTable from "../../components/Employees/EmployeeListTable";
 import QueryBoundary from "../../components/common/QueryBoundary";
@@ -11,7 +11,6 @@ import {
   SearchFilterInput,
   SimpleSelectFilter,
   DataDrivenSelectFilter,
-  ResetFilterButton,
   MobileFilterWrapper,
 } from "../../components/common/FilterFields";
 
@@ -31,18 +30,13 @@ const Employees: React.FC = () => {
   const [form] = Form.useForm<EmployeePageFilterValues>();
   const [filters, setFilters] = useState<EmployeePageFilterValues>({});
 
-  const handleResetFilters = () => {
-    form.resetFields();
-    setFilters({});
-  };
-
   const {
     data: employees = [],
     isLoading: isLoadingEmployees,
     error: errorEmployees,
   } = useQuery<EmployeeUIData[], Error>({
     queryKey: ["employees"],
-    queryFn: getAllEmployees,
+    queryFn: employeeService.getAll,
   });
 
   const {
@@ -51,7 +45,7 @@ const Employees: React.FC = () => {
     error: errorDepartments,
   } = useQuery<Department[], Error>({
     queryKey: ["departments"],
-    queryFn: fetchDepartments,
+    queryFn: departmentService.getAll,
   });
 
   const uniqueJobTitles = useMemo(() => {
@@ -178,11 +172,7 @@ const Employees: React.FC = () => {
         disabled={isLoading}
         className={isDrawer ? "w-full" : "min-w-[180px]"}
       />
-      <ResetFilterButton
-        onClick={handleResetFilters}
-        disabled={isLoading}
-        isDrawerButton={isDrawer}
-      />
+
       {isDrawer && closeDrawer && (
         <Button
           type="primary"

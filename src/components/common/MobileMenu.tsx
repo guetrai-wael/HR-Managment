@@ -20,11 +20,23 @@ import UserAvatar from "./UserAvatar"; // Import UserAvatar
 
 const MobileMenu: React.FC = () => {
   const { user, profile } = useUser();
-  const { isAdmin, isEmployee, isJobSeeker, roleName } = useRole(); // Add roleName
+
+  // 🆕 NEW: Using pure standardized structure
+  const {
+    data: { isAdmin, isEmployee, isJobSeeker, roleName },
+  } = useRole();
   const [open, setOpen] = useState(false);
   const location = useLocation();
-  const { logout } = useAuth();
-  const isActive = (path: string) => location.pathname === path;
+
+  // 🆕 NEW: Using standardized structure
+  const { actions } = useAuth();
+  const isActive = (path: string) => {
+    // Special handling for dashboard root path
+    if (path === "/") {
+      return location.pathname === "/";
+    }
+    return location.pathname === path;
+  };
 
   const showDrawer = () => {
     setOpen(true);
@@ -38,7 +50,7 @@ const MobileMenu: React.FC = () => {
   const getCurrentPageTitle = () => {
     const path = location.pathname;
     if (path === "/jobs") return "Jobs";
-    if (path === "/" || path === "/dashboard") return "Dashboard";
+    if (path === "/") return "Dashboard";
     if (path === "/applications")
       return isAdmin ? "Applications Management" : "My Applications";
     if (path === "/employees") return "Employee Management"; // Corrected title
@@ -62,7 +74,7 @@ const MobileMenu: React.FC = () => {
             {
               icon: <IconHome stroke={1.5} />,
               text: "Dashboard",
-              path: "/dashboard",
+              path: "/",
             },
           ]
         : []),
@@ -206,7 +218,7 @@ const MobileMenu: React.FC = () => {
                 </div>
               </div>
               <button
-                onClick={() => logout()}
+                onClick={() => actions.logout()}
                 className="p-2 rounded-md hover:bg-gray-100"
                 aria-label="Logout"
               >

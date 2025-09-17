@@ -74,13 +74,16 @@ export function DashboardSidebar({
         <Card>
           <div className="text-center">
             <Text type="secondary" className="block mb-2">
-              Balance
+              Current Leave Balance
             </Text>
             <div className="flex items-center justify-around gap-2 mb-2">
               <Title level={2} className="text-green-600 mb-0">
                 {isLoadingBalance ? "..." : leaveBalance || 0}
               </Title>
               <img src={balanceIcon} alt="Balance" className="w-9 h-9" />
+            </div>
+            <div className="text-xs text-gray-500 mb-3">
+              Anniversary-based • 24 days/year + carryover
             </div>
             <Button
               type="primary"
@@ -97,3 +100,5 @@ export function DashboardSidebar({
     </div>
   );
 }
+
+export default DashboardSidebar;

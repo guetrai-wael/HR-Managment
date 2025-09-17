@@ -1,11 +1,12 @@
 import React from "react";
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { fetchUserProfile } from "../../services/api/userService"; // Changed to fetchUserProfile
-import { getDepartmentById } from "../../services/api/departmentService";
+import { profileService } from "../../services/api/core";
+import { departmentService } from "../../services/api/admin";
 import { UserProfile, Department } from "../../types/models";
 import { formatDate } from "../../utils/formatDate";
 import { PageLayout, QueryBoundary, UserAvatar } from "../../components/common";
+import { useUser } from "../../hooks/useUser";
 import {
   Card,
   Descriptions,
@@ -29,7 +30,11 @@ import {
 const { Title, Text, Paragraph } = Typography;
 
 const UserProfilePage: React.FC = () => {
-  const { userId } = useParams<{ userId: string }>();
+  const { userId: urlUserId } = useParams<{ userId: string }>();
+  const { user: currentUser } = useUser();
+
+  // Use URL userId if provided (viewing someone else's profile), otherwise use current user's ID
+  const userId = urlUserId || currentUser?.id;
 
   const {
     data: user,
@@ -38,7 +43,8 @@ const UserProfilePage: React.FC = () => {
     error: userErrorData,
   } = useQuery<UserProfile | null, Error>({
     queryKey: ["userProfile", userId],
-    queryFn: () => (userId ? fetchUserProfile(userId) : Promise.resolve(null)),
+    queryFn: () =>
+      userId ? profileService.getById(userId) : Promise.resolve(null),
     enabled: !!userId,
   });
 
@@ -51,7 +57,7 @@ const UserProfilePage: React.FC = () => {
     queryKey: ["department", user?.department_id],
     queryFn: () =>
       user?.department_id
-        ? getDepartmentById(user.department_id.toString())
+        ? departmentService.getById(user.department_id.toString())
         : Promise.resolve(null),
     enabled: !!user?.department_id,
   });

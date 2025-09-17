@@ -9,7 +9,9 @@ import { useAuth } from "../../hooks";
 
 const Signup: FC = () => {
   const navigate = useNavigate();
-  const { register, getSession, isLoadingRegister } = useAuth();
+
+  // 🆕 NEW: Using standardized structure
+  const { actions, isLoading, error: authError } = useAuth();
 
   const SignupSchema = Yup.object().shape({
     firstName: Yup.string()
@@ -32,9 +34,23 @@ const Signup: FC = () => {
   const handleRegistrationSubmit = async (values: ILoginData) => {
     const { email, password, firstName, lastName } = values;
     if (email && password && firstName && lastName) {
-      const result = await register(email, password, firstName, lastName);
-      if (result && result.user) {
-        navigate("/login");
+      try {
+        // 🆕 NEW: Using actions.register instead of direct register
+        const result = await actions.register(
+          email,
+          password,
+          firstName,
+          lastName
+        );
+        if (result && result.user) {
+          navigate("/login");
+        }
+      } catch (submitError) {
+        // 🆕 NEW: Enhanced error handling with centralized authError
+        console.error("Registration failed:", submitError);
+        if (authError) {
+          console.error("Auth hook error:", authError);
+        }
       }
     } else {
       message.error("All fields are required for signup.");
@@ -43,13 +59,14 @@ const Signup: FC = () => {
 
   const handleGoogleSuccess = async () => {
     try {
-      const session = await getSession();
+      // 🆕 NEW: Using actions.getSession instead of direct getSession
+      const session = await actions.getSession();
       if (session) {
         message.success("Successfully signed up with Google!");
         navigate("/");
       }
-    } catch (error) {
-      console.error("Error handling Google signup success:", error);
+    } catch (sessionError) {
+      console.error("Error handling Google signup success:", sessionError);
       message.error("Failed to complete Google sign-up process.");
     }
   };
@@ -101,7 +118,7 @@ const Signup: FC = () => {
             placeholder: "Enter your password",
           },
         ]}
-        isLoading={isLoadingRegister}
+        isLoading={isLoading}
       />
     </FormContainer>
   );

@@ -22,7 +22,7 @@ const FormActions: React.FC<FormActionsProps> = ({
   containerClassName = "flex flex-col-reverse gap-2 sm:flex-row sm:justify-end",
 }) => {
   return (
-    <div className={`form-actions-container ${containerClassName}`}>
+    <div className={`flex gap-3 mt-6 ${containerClassName}`}>
       {secondaryActionText && onSecondaryAction && (
         <Button
           onClick={onSecondaryAction}

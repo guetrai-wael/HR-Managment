@@ -1,7 +1,13 @@
 import { Fragment, lazy, Suspense } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { IRouteItem } from "../types";
-import { AuthGuard, GuestGuard, PublicGuard, AdminGuard } from "../guards";
+import {
+  AuthGuard,
+  GuestGuard,
+  PublicGuard,
+  AdminOnlyGuard,
+  EmployeeOrAdminGuard,
+} from "../guards";
 import MainLayout from "../components/Layouts/MainLayout";
 import LoadingFallback from "../components/common/LoadingFallback";
 
@@ -31,7 +37,7 @@ export const routes: IRouteItem[] = [
   {
     path: "/",
     element: <Dashboard />,
-    guard: AuthGuard,
+    guard: EmployeeOrAdminGuard,
     layout: MainLayout,
   },
   {
@@ -55,13 +61,13 @@ export const routes: IRouteItem[] = [
   {
     path: "/employees",
     element: <Employees />,
-    guard: AdminGuard,
+    guard: AdminOnlyGuard,
     layout: MainLayout,
   },
   {
     path: "/employees/:userId",
     element: <UserProfilePage />,
-    guard: AdminGuard, // Or AuthGuard if non-admins can view some profiles
+    guard: AdminOnlyGuard, // Only admins can view other profiles
     layout: MainLayout,
   },
   {
@@ -79,12 +85,12 @@ export const routes: IRouteItem[] = [
   {
     path: "/leaves",
     element: <LeavePage />,
-    guard: AuthGuard, // All authenticated users (employees, admins) can access /leaves
+    guard: EmployeeOrAdminGuard, // Only employees and admins can access leaves
     layout: MainLayout,
   },
   {
     path: "*",
-    element: <Navigate to="/" />,
+    element: <Navigate to="/jobs" />,
   },
 ];
 

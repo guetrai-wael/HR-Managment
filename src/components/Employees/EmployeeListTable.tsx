@@ -4,7 +4,7 @@ import { Button, Space, Tag, Popconfirm, Tooltip } from "antd";
 import { ColumnsType } from "antd/es/table";
 import { UserProfile } from "../../types";
 import { formatDate } from "../../utils/formatDate";
-import { terminateEmployee } from "../../services/api/userService";
+import { employeeService } from "../../services/api/hr";
 import {
   IconEye,
   IconTrash,
@@ -35,7 +35,7 @@ const EmployeeListTable: React.FC<EmployeeListTableProps> = ({ employees }) => {
 
   const { mutate: terminateEmployeeMutation, isPending: isTerminating } =
     useMutationHandler<UserProfile, Error, string>({
-      mutationFn: terminateEmployee,
+      mutationFn: employeeService.terminate,
       queryClient,
       successMessage: "Employee terminated successfully.",
       errorMessagePrefix: "Failed to terminate employee",

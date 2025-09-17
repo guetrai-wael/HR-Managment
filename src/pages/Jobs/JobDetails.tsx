@@ -7,15 +7,19 @@ import { PageLayout } from "../../components/common";
 import QueryBoundary from "../../components/common/QueryBoundary";
 import { ApplicationForm } from "../../components/Jobs/index";
 import { useUser, useRole } from "../../hooks";
-import { getJobById } from "../../services/api/jobService";
-import { checkApplicationStatus } from "../../services/api/applicationService";
+import { jobService } from "../../services/api/recruitment/jobService";
+import { applicationCrudService } from "../../services/api/recruitment";
 import { Job } from "../../types";
 
 const JobDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useUser();
-  const { isAdmin } = useRole();
+
+  // 🆕 NEW: Using pure standardized structure
+  const {
+    data: { isAdmin },
+  } = useRole();
   const [applyModalVisible, setApplyModalVisible] = useState(false);
   const queryClient = useQueryClient();
 
@@ -28,7 +32,7 @@ const JobDetails: React.FC = () => {
     queryKey: ["job", id],
     queryFn: async () => {
       if (!id) return null;
-      return getJobById(id);
+      return jobService.getById(id);
     },
     enabled: !!id,
   });
@@ -42,7 +46,12 @@ const JobDetails: React.FC = () => {
     queryKey: ["applicationStatus", id, user?.id],
     queryFn: async () => {
       if (!user || !id) return { applied: false };
-      return checkApplicationStatus(id, user.id);
+      const existingApplication =
+        await applicationCrudService.checkApplicationStatus(
+          user.id,
+          parseInt(id)
+        );
+      return { applied: !!existingApplication };
     },
     enabled: !!user && !!id,
   });
@@ -241,7 +250,7 @@ const JobDetails: React.FC = () => {
           footer={null}
           width={650}
           style={{ maxWidth: "95%" }}
-          bodyStyle={{ padding: "16px" }}
+          styles={{ body: { padding: "16px" } }}
           className="job-application-modal"
           maskClosable={false}
         >

@@ -9,7 +9,9 @@ import { useAuth } from "../../hooks/index";
 
 const Login: FC = () => {
   const navigate = useNavigate();
-  const { login, getSession, isLoadingLogin } = useAuth();
+
+  // 🆕 NEW: Using standardized structure
+  const { actions, isLoading, error: authError } = useAuth();
 
   const LoginSchema = yup.object().shape({
     email: yup
@@ -25,9 +27,18 @@ const Login: FC = () => {
   const handleSubmit = async (data: ILoginData) => {
     // Ensure email and password are not undefined before calling login
     if (data.email && data.password) {
-      const result = await login(data.email, data.password);
-      if (result && result.session) {
-        navigate("/");
+      try {
+        // 🆕 NEW: Using actions.login instead of direct login
+        const result = await actions.login(data.email, data.password);
+        if (result && result.session) {
+          navigate("/");
+        }
+      } catch (submitError) {
+        // 🆕 NEW: We could also check authError from the hook for centralized error handling
+        console.error("Login failed:", submitError);
+        if (authError) {
+          console.error("Auth hook error:", authError);
+        }
       }
     } else {
       // Handle cases where email or password might be missing, though yup should prevent this.
@@ -38,13 +49,14 @@ const Login: FC = () => {
 
   const handleGoogleSuccess = async () => {
     try {
-      const session = await getSession();
+      // 🆕 NEW: Using actions.getSession instead of direct getSession
+      const session = await actions.getSession();
       if (session) {
         message.success("Successfully logged in with Google!");
         navigate("/");
       }
-    } catch (error) {
-      console.error("Error handling Google login success:", error);
+    } catch (sessionError) {
+      console.error("Error handling Google login success:", sessionError);
       message.error("Failed to process Google login. Please try again.");
     }
   };
@@ -85,7 +97,7 @@ const Login: FC = () => {
             placeholder: "Enter your password",
           },
         ]}
-        isLoading={isLoadingLogin}
+        isLoading={isLoading}
       />
     </FormContainer>
   );

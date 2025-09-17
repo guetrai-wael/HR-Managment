@@ -12,7 +12,7 @@ const AuthGuard = ({ children }: { children: React.ReactNode }) => {
       error={null}
       loadingTip="Verifying authentication..."
     >
-      {!user && !authLoading ? <Navigate to="/login" /> : <>{children}</>}
+      {!user && !authLoading ? <Navigate to="/jobs" /> : <>{children}</>}
     </QueryBoundary>
   );
 };

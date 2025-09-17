@@ -9,11 +9,13 @@ const GoogleSignInButton: FC<GoogleSignInButtonProps> = ({
   onError,
   disabled, // Added disabled prop
 }) => {
-  const { loginWithGoogle, loading } = useAuth();
+  // 🆕 NEW: Using standardized structure
+  const { actions, isLoading } = useAuth();
 
   const handleGoogleSignIn = async () => {
     try {
-      const success = await loginWithGoogle();
+      // 🆕 NEW: Using actions.loginWithGoogle instead of direct loginWithGoogle
+      const success = await actions.loginWithGoogle();
 
       if (success && onSuccess) {
         onSuccess();
@@ -29,8 +31,8 @@ const GoogleSignInButton: FC<GoogleSignInButtonProps> = ({
       type="default"
       size="large"
       onClick={handleGoogleSignIn}
-      loading={loading} // This loading comes from useAuth, specific to Google OAuth flow
-      disabled={disabled || loading} // Disable if prop disabled is true or if Google OAuth is loading
+      loading={isLoading} // 🆕 NEW: Using isLoading from standardized hook
+      disabled={disabled || isLoading} // 🆕 NEW: Using isLoading for consistency
       className="w-full flex items-center justify-center gap-2 border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 h-11 rounded-md"
     >
       <svg

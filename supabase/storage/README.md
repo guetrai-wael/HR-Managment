@@ -107,4 +107,15 @@ FOR SELECT USING (bucket_id = 'avatars');
 
 ---
 
+## 🗂️ Recordings (video processing)
+
+This project integrates with an external Detection-2K25 service that processes uploaded videos and returns a JSON file (`results_json`) describing detected employee presence and durations. The metadata and JSON results are stored in the `public.recordings` table (see `supabase/tables/recordings_table.sql`).
+
+Notes:
+
+- Video files themselves are not stored by default in Supabase in this project; if you do upload raw videos to a storage bucket, reference them from `video_name` or add a `video_url` column and secure the bucket with RLS policies.
+- See `supabase/functions/README.md` for extraction SQL to obtain the live table DDL, policies, and triggers.
+
+---
+
 _📝 Storage buckets are properly configured for HR document management_

@@ -227,7 +227,9 @@ const Sidebar: React.FC = () => {
               <span className="text-sm text-[#667085] truncate">
                 {profileLoading
                   ? "Loading role..."
-                  : profile?.position || formatRoleForDisplay(roleName)}
+                  : isAdmin 
+                    ? "Admin" 
+                    : profile?.position || formatRoleForDisplay(roleName)}
               </span>
             </div>
           </div>

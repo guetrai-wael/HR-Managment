@@ -194,3 +194,49 @@ export interface LeaveBalance {
   remaining_balance: number;
   // unit: 'days' | 'hours';
 }
+
+/**
+ * Recording types for employee presence tracking
+ */
+
+/**
+ * Represents a recording entry in the system.
+ */
+export interface RecordingResult {
+  /** The unique identifier for the recording (Primary Key). */
+  id: string;
+  /** The timestamp when the recording was created. */
+  created_at: string;
+  /** The name/path of the video file. */
+  video_name: string;
+  /** The current status of the recording processing. */
+  status: "processing" | "completed" | "failed";
+}
+
+/**
+ * Extends RecordingResult with detailed analysis results.
+ */
+export interface RecordingDetails extends RecordingResult {
+  /** The JSON containing employee presence data from the detection model. */
+  results_json: EmployeePresence[];
+}
+
+/**
+ * Represents an employee's presence data from video analysis.
+ */
+export interface EmployeePresence {
+  /** The name of the employee detected. */
+  name: string;
+  /** The duration the employee was present (format: "Xsec"). */
+  duration: string;
+  /** The employee's email address. */
+  email: string;
+  /** The employee's phone number. */
+  phone_number: string;
+  /** The department the employee belongs to. */
+  department: string;
+  /** The employee's role in the organization. */
+  role: string;
+  /** Whether the employee was present or absent. */
+  attendance: "Present" | "Absent";
+}

@@ -371,3 +371,38 @@ FROM jobs;
 ---
 
 _📝 Next: Let's check storage buckets and auth settings to complete the review_
+
+---
+
+## 📼 Recordings Table (Detection-2K25)
+
+This repository includes a `recordings` table used to store metadata and JSON results produced by the external Detection-2K25 processing service. The live Supabase schema includes column comments, RLS policies, and a trigger to keep `updated_at` current.
+
+Key points:
+
+- Table file: `supabase/tables/recordings_table.sql` (contains CREATE TABLE, indexes, RLS policies, trigger and comments)
+- Policies: `recordings_select_policy`, `recordings_insert_policy`, `recordings_update_policy`, `recordings_delete_policy` (expressions limit access to admin and employee roles as appropriate)
+- Trigger: `recordings_updated_at_trigger` calls `update_recordings_updated_at()` to keep `updated_at` in sync.
+
+If you need to re-extract live metadata from your Supabase project, run the SQL queries in the `supabase` folder or use the SQL Editor with the following sample queries (replace `public.recordings` with your schema if different):
+
+```sql
+-- Get CREATE TABLE DDL
+SELECT pg_get_tabledef('public.recordings'::regclass);
+
+-- Get column comments
+SELECT column_name, col_description(('public.'|| table_name)::regclass::oid, ordinal_position) as column_comment
+FROM information_schema.columns
+WHERE table_schema = 'public' AND table_name = 'recordings';
+
+-- Get RLS policies
+SELECT policyname as policy_name, permissive as policy_type, cmd as command, qual as using_expression, with_check as with_check_expression
+FROM pg_policies
+WHERE tablename = 'recordings' AND schemaname = 'public';
+
+-- Get triggers
+SELECT tgname as trigger_name, pg_get_triggerdef(t.oid) as trigger_definition
+FROM pg_trigger t
+JOIN pg_class c ON t.tgrelid = c.oid
+WHERE c.relname = 'recordings' AND NOT t.tgisinternal;
+```

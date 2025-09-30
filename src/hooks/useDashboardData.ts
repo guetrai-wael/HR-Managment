@@ -42,9 +42,9 @@ export const useDashboardStats = (isAdmin: boolean, isEmployee: boolean) => {
   const queryResult = useQuery<DashboardStats>({
     queryKey: ["dashboard-stats", isAdmin, isEmployee],
     queryFn: () => statisticsService.getStats(isAdmin, isEmployee),
-    refetchInterval: 5 * 60 * 1000, // Refresh every 5 minutes instead of 1 minute
-    staleTime: 2 * 60 * 1000, // Consider data fresh for 2 minutes
-    gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
+    refetchInterval: 2 * 60 * 1000, // Refresh every 2 minutes instead of 1 minute
+    staleTime: 60 * 1000, // Consider data fresh for 1 minutes
+    gcTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
     enabled: isAdmin || isEmployee, // Only fetch if user has a valid role
   });
 

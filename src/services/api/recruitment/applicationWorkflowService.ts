@@ -154,24 +154,54 @@ export const applicationWorkflowService = {
       `[applicationWorkflowService] Converting user ${userId} to employee`
     );
 
-    // Update user role from job_seeker (3) to employee (2)
-    const { error: roleError } = await supabase
-      .from("user_roles")
-      .update({ role_id: 2 })
-      .eq("user_id", userId);
+    try {
+      // First, find the latest accepted application for this user to get job details
+      const { data: applicationData, error: applicationError } = await supabase
+        .from("applications")
+        .select(`
+          job_id,
+          job:jobs (
+            title,
+            department_id
+          )
+        `)
+        .eq("user_id", userId)
+        .eq("status", "accepted")
+        .order("applied_at", { ascending: false })
+        .limit(1)
+        .single();
 
-    if (roleError) throw roleError;
+      if (applicationError) {
+        console.error("[applicationWorkflowService] Error fetching application data:", applicationError);
+        throw applicationError;
+      }
 
-    // Set hiring date in profile
-    const { error: profileError } = await supabase
-      .from("profiles")
-      .update({
-        hiring_date: new Date().toISOString().split("T")[0],
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", userId);
+      // Update user role from job_seeker (3) to employee (2)
+      const { error: roleError } = await supabase
+        .from("user_roles")
+        .update({ role_id: 2 })
+        .eq("user_id", userId);
 
-    if (profileError) throw profileError;
+      if (roleError) throw roleError;
+
+      // Set hiring date, position, and department in profile
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update({
+          hiring_date: new Date().toISOString().split("T")[0],
+          position: applicationData?.job?.title || null,
+          department_id: applicationData?.job?.department_id || null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", userId);
+
+      if (profileError) throw profileError;
+      
+      console.log(`[applicationWorkflowService] Successfully updated profile with position: ${applicationData?.job?.title} and department_id: ${applicationData?.job?.department_id}`);
+    } catch (error) {
+      console.error("[applicationWorkflowService] Error in convertToEmployee:", error);
+      throw error;
+    }
   },
 
   /**

@@ -22,6 +22,8 @@ const Employees = lazy(() => import("../pages/Employees/Employees"));
 const SettingsPage = lazy(() => import("../pages/Profile/SettingsPage"));
 const UserProfilePage = lazy(() => import("../pages/Profile/UserProfilePage"));
 const LeavePage = lazy(() => import("../pages/Leave/LeavePage"));
+const Recordings = lazy(() => import("../pages/Recordings"));
+const RecordingDetails = lazy(() => import("../pages/Recordings/RecordingDetails"));
 
 export const routes: IRouteItem[] = [
   {
@@ -86,6 +88,18 @@ export const routes: IRouteItem[] = [
     path: "/leaves",
     element: <LeavePage />,
     guard: EmployeeOrAdminGuard, // Only employees and admins can access leaves
+    layout: MainLayout,
+  },
+  {
+    path: "/recordings",
+    element: <Recordings />,
+    guard: AdminOnlyGuard, // Only admins can access recordings
+    layout: MainLayout,
+  },
+  {
+    path: "/recordings/:id",
+    element: <RecordingDetails />,
+    guard: AdminOnlyGuard, // Only admins can access recording details
     layout: MainLayout,
   },
   {

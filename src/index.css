@@ -130,7 +130,83 @@
 
 .settings-upload-dragger:hover {
     border-color: #1890ff;
-    background: #f0f8ff;
+    /* keep background subtle so it doesn't create a visible seam with the avatar card */
+    background: rgba(240, 248, 255, 0.6);
+}
+
+/* Avatar container: center avatar and align heights with the dragger */
+.avatar-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+}
+
+/* Ensure the avatar itself scales and remains centered */
+.settings-avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Make dragger and avatar column visually aligned on small screens */
+@media (max-width: 768px) {
+    .avatar-container {
+        justify-content: flex-start;
+        padding-left: 8px;
+    }
+}
+
+/* Force a larger avatar size in settings and ensure image covers the area */
+.avatar-container .settings-avatar {
+    width: 140px !important;
+    height: 140px !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    /* keep circular */
+    overflow: hidden;
+}
+
+.avatar-container .settings-avatar img,
+.avatar-container .settings-avatar .ant-avatar-string {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+}
+
+/* Slightly reduce the dragger border to better blend with the card */
+.avatar-upload-row .upload-col .settings-upload-dragger {
+    border: 1px dashed rgba(217, 217, 217, 0.9) !important;
+}
+
+/* Prevent hover background from creating a strong seam */
+.avatar-upload-row .upload-col .settings-upload-dragger:hover {
+    background: rgba(240, 248, 255, 0.35) !important;
+}
+
+/* Ensure the dragger's inner wrapper also drops any background overlay that creates seams */
+.avatar-upload-row .upload-col .settings-upload-dragger .ant-upload-drag {
+    background: transparent !important;
+}
+
+/* Target Ant Avatar directly with higher specificity to enforce pixel size */
+.avatar-upload-row .avatar-col .avatar-container .ant-avatar,
+.avatar-upload-row .avatar-col .avatar-container .ant-avatar>img,
+.avatar-upload-row .avatar-col .avatar-container .ant-avatar .ant-avatar-string {
+    width: 140px !important;
+    height: 140px !important;
+    line-height: 140px !important;
+    font-size: 56px !important;
+    /* for initials fallback */
+}
+
+/* If the Avatar component renders a span wrapper, ensure it doesn't constrain size */
+.avatar-upload-row .avatar-col .avatar-container .ant-avatar>span {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
 }
 
 /* Form inputs */

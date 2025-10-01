@@ -97,6 +97,20 @@ const LeaveManagementTable: React.FC<LeaveManagementTableProps> = ({
   // Use prop data if provided, otherwise use fetched data
   const leaveRequests = propLeaveRequests || fetchedLeaveRequests;
 
+  // Controlled pagination state
+  const [currentPage, setCurrentPage] = React.useState<number>(1);
+  const [pageSize, setPageSize] = React.useState<number>(10);
+
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [leaveRequests]);
+
+  const paginatedData = React.useMemo(() => {
+    if (!leaveRequests) return [];
+    const start = (currentPage - 1) * pageSize;
+    return leaveRequests.slice(start, start + pageSize);
+  }, [leaveRequests, currentPage, pageSize]);
+
   // Effect to show error message when queryError changes
   useEffect(() => {
     if (queryError) {
@@ -333,7 +347,7 @@ const LeaveManagementTable: React.FC<LeaveManagementTableProps> = ({
       </Title>
       <Table
         columns={columns}
-        dataSource={leaveRequests}
+        dataSource={paginatedData}
         loading={isLoading}
         rowKey="id"
         scroll={{ x: 770 }}
@@ -341,11 +355,19 @@ const LeaveManagementTable: React.FC<LeaveManagementTableProps> = ({
         className="leave-management-table"
         rowClassName="leave-table-row"
         pagination={{
-          pageSize: 10,
+          current: currentPage,
+          pageSize,
+          total: (leaveRequests || []).length,
           showSizeChanger: true,
           pageSizeOptions: ["5", "10", "20", "50"],
           showTotal: (total, range) =>
             `${range[0]}-${range[1]} of ${total} requests`,
+          onChange: (page, newPageSize) => {
+            setCurrentPage(page);
+            if (newPageSize && newPageSize !== pageSize) {
+              setPageSize(newPageSize);
+            }
+          },
         }}
       />
 

@@ -3,6 +3,7 @@ import { Sidebar, MobileMenu } from "../common/index";
 import { Button } from "antd";
 import { useUser } from "../../hooks";
 import { Link } from "react-router-dom";
+import Logo from "../../assets/icons/Logo.svg";
 import QueryBoundary from "../common/QueryBoundary";
 
 interface MainLayoutProps {
@@ -24,8 +25,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           {/* Public Header */}
           <header className="bg-white shadow-sm h-16 flex items-center px-4 md:px-8">
             <div className="flex-1">
-              <Link to="/" className="text-xl font-bold text-[#6941C6]">
-                Job Portal
+              <Link to="/" className="flex items-center">
+                <div className="w-[83px] h-[32px]">
+                  <img src={Logo} alt="Logo" className="w-full h-full" />
+                </div>
               </Link>
             </div>
             <div className="flex items-center gap-4">

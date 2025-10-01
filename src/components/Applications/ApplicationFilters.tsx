@@ -57,7 +57,9 @@ const ApplicationFilters: React.FC<ApplicationFiltersProps> = ({
   } = useQuery<Department[], Error>({
     queryKey: ["departmentsListForFilters"],
     queryFn: () => departmentService.getAll(),
-    enabled: isAdmin,
+    // Allow all users to fetch departments so job seekers can filter by department.
+    // Departments are non-sensitive reference data and can be shown to all roles.
+    enabled: true,
   });
 
   useEffect(() => {

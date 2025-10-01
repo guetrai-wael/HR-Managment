@@ -87,7 +87,16 @@ const ApplicationsTable: React.FC<ApplicationsTableProps> = ({
       dataIndex: "job",
       key: "job_title",
       render: (_value: unknown, record: Application) => (
-        <span className="font-medium truncate block max-w-[180px]">
+        <span
+          className="font-medium block"
+          style={{
+            whiteSpace: "normal",
+            overflow: "visible",
+            textOverflow: "unset",
+            display: "block",
+          }}
+          title={record.job?.title}
+        >
           {record.job?.title || "Unknown Job"}
         </span>
       ),

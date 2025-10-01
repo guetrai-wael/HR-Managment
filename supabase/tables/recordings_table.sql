@@ -8,10 +8,6 @@ CREATE TABLE IF NOT EXISTS public.recordings (
     id UUID PRIMARY KEY,
     -- Video metadata
     video_name TEXT NOT NULL,
-    video_size BIGINT,
-    -- File size in bytes (optional)
-    video_duration INTEGER,
-    -- Duration in seconds (optional)
     -- Processing status
     status TEXT NOT NULL CHECK (status IN ('processing', 'completed', 'failed')),
     -- Results from Detection-2K25 model
@@ -31,7 +27,10 @@ CREATE TABLE IF NOT EXISTS public.recordings (
     uploaded_by UUID REFERENCES auth.users(id) ON DELETE
     SET NULL,
         -- When the recording took place (if available from video/device)
-        recorded_at TIMESTAMP WITH TIME ZONE
+        recorded_at TIMESTAMP WITH TIME ZONE -- Size of the uploaded video file in bytes (nullable if not provided by processor)
+        video_size BIGINT NULL,
+        -- Duration of the original video in seconds (nullable if not provided by processor)
+        video_duration_seconds INTEGER NULL
 );
 -- =============================================
 -- Indexes for Performance
@@ -42,6 +41,10 @@ CREATE INDEX IF NOT EXISTS idx_recordings_status ON public.recordings(status);
 CREATE INDEX IF NOT EXISTS idx_recordings_created_at ON public.recordings(created_at DESC);
 -- Index for filtering by uploader
 CREATE INDEX IF NOT EXISTS idx_recordings_uploaded_by ON public.recordings(uploaded_by);
+-- Index for filtering by video size
+CREATE INDEX IF NOT EXISTS idx_recordings_video_size ON public.recordings(video_size);
+-- Index for filtering by video duration
+CREATE INDEX IF NOT EXISTS idx_recordings_video_duration ON public.recordings(video_duration_seconds);
 -- =============================================
 -- Row Level Security (RLS) Policies
 -- =============================================

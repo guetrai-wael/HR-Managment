@@ -31,9 +31,8 @@ export function DashboardSidebar({
   const getUserRole = () => {
     if (isAdmin) return "Admin";
     // For employees, show their position from profile data
-    if (isEmployee) {
-      // Access the profile directly from the useUser hook
-      return user?.user_metadata?.position || "Employee";
+    if (isEmployee && user?.user_metadata?.profile) {
+      return user.user_metadata.profile.position || "Employee";
     }
     return "User";
   };

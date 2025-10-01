@@ -65,9 +65,19 @@ const Applications: React.FC = () => {
 
     // Filter by department ID if selected
     if (filters.departmentId) {
-      filtered = filtered.filter(
-        (app) => app.job?.department?.id === filters.departmentId
-      );
+      // Coerce both sides to number when possible to avoid type mismatches
+      filtered = filtered.filter((app) => {
+        const appDeptId = app.job?.department?.id;
+        const filterDeptId =
+          typeof filters.departmentId === "string"
+            ? parseInt(filters.departmentId, 10)
+            : (filters.departmentId as number);
+        return (
+          typeof appDeptId !== "undefined" &&
+          !Number.isNaN(filterDeptId) &&
+          appDeptId === filterDeptId
+        );
+      });
     }
 
     // Filter by search term (admin only - for applicant names/emails)

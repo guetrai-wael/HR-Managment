@@ -156,23 +156,34 @@ export const applicationWorkflowService = {
 
     try {
       // First, find the latest accepted application for this user to get job details
-      const { data: applicationData, error: applicationError } = await supabase
+      const { data: applicationData, error: applicationError } = (await supabase
         .from("applications")
-        .select(`
+        .select(
+          `
           job_id,
           job:jobs (
             title,
             department_id
           )
-        `)
+        `
+        )
         .eq("user_id", userId)
         .eq("status", "accepted")
         .order("applied_at", { ascending: false })
         .limit(1)
-        .single();
+        .single()) as {
+        data: {
+          job_id: number;
+          job: { title: string; department_id: number | null } | null;
+        } | null;
+        error: Error | null;
+      };
 
       if (applicationError) {
-        console.error("[applicationWorkflowService] Error fetching application data:", applicationError);
+        console.error(
+          "[applicationWorkflowService] Error fetching application data:",
+          applicationError
+        );
         throw applicationError;
       }
 
@@ -196,10 +207,15 @@ export const applicationWorkflowService = {
         .eq("id", userId);
 
       if (profileError) throw profileError;
-      
-      console.log(`[applicationWorkflowService] Successfully updated profile with position: ${applicationData?.job?.title} and department_id: ${applicationData?.job?.department_id}`);
+
+      console.log(
+        `[applicationWorkflowService] Successfully updated profile with position: ${applicationData?.job?.title} and department_id: ${applicationData?.job?.department_id}`
+      );
     } catch (error) {
-      console.error("[applicationWorkflowService] Error in convertToEmployee:", error);
+      console.error(
+        "[applicationWorkflowService] Error in convertToEmployee:",
+        error
+      );
       throw error;
     }
   },

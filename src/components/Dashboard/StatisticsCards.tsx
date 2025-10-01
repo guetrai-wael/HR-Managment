@@ -115,9 +115,8 @@ export function StatisticsCards({
               prefix={
                 <img src={vacationIcon} alt="Vacation" className="w-6 h-6" />
               }
-              suffix="total used"
+              suffix="Since hiring"
             />
-            <div className="text-xs text-gray-500 mt-1">Since hiring</div>
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
@@ -126,9 +125,8 @@ export function StatisticsCards({
               title="Casual Days"
               value={stats?.casualDays || 0}
               prefix={<img src={casualIcon} alt="Casual" className="w-6 h-6" />}
-              suffix="total used"
+              suffix="Since hiring"
             />
-            <div className="text-xs text-gray-500 mt-1">Since hiring</div>
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
@@ -139,9 +137,8 @@ export function StatisticsCards({
               prefix={
                 <img src={personalIcon} alt="Personal" className="w-6 h-6" />
               }
-              suffix="total used"
+              suffix="Since hiring"
             />
-            <div className="text-xs text-gray-500 mt-1">Since hiring</div>
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
@@ -150,9 +147,8 @@ export function StatisticsCards({
               title="Sick Days"
               value={stats?.sickDays || 0}
               prefix={<img src={sickIcon} alt="Sick" className="w-6 h-6" />}
-              suffix="total used"
+              suffix="Since hiring"
             />
-            <div className="text-xs text-gray-500 mt-1">Since hiring</div>
           </Card>
         </Col>
       </Row>

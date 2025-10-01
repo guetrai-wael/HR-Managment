@@ -77,9 +77,20 @@ export const applicationCrudService = {
         query = query.eq("job_id", filters.jobId);
       }
 
-      // Apply department filter if provided
-      if (filters.departmentId) {
-        query = query.eq("job.department_id", filters.departmentId);
+      // Apply department filter if provided (ignore the 'all' sentinel)
+      if (
+        typeof filters.departmentId !== "undefined" &&
+        filters.departmentId !== null &&
+        filters.departmentId !== "all"
+      ) {
+        // Ensure we pass a number to Supabase when possible
+        const deptId =
+          typeof filters.departmentId === "string"
+            ? parseInt(filters.departmentId, 10)
+            : (filters.departmentId as number);
+        if (!Number.isNaN(deptId)) {
+          query = query.eq("job.department_id", deptId);
+        }
       }
 
       // Apply date range filters if provided

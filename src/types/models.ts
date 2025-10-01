@@ -209,6 +209,10 @@ export interface RecordingResult {
   created_at: string;
   /** The name/path of the video file. */
   video_name: string;
+  /** The size of the video file in bytes (nullable). */
+  video_size?: number | null;
+  /** The duration of the video in seconds (nullable). */
+  video_duration?: number | null;
   /** The current status of the recording processing. */
   status: "processing" | "completed" | "failed";
 }
@@ -228,7 +232,7 @@ export interface EmployeePresence {
   /** The name of the employee detected. */
   name: string;
   /** The duration the employee was present (format: "Xsec"). */
-  duration: string;
+  duration: string | number;
   /** The employee's email address. */
   email: string;
   /** The employee's phone number. */
@@ -239,4 +243,52 @@ export interface EmployeePresence {
   role: string;
   /** Whether the employee was present or absent. */
   attendance: "Present" | "Absent";
+  /** The employee ID from auth/database. */
+  employee_id?: string;
+  /** Time intervals when detected (optional). */
+  intervals?: { in: number; out: number }[];
+}
+
+/**
+ * Represents a person entry in results_json with intervals.
+ * Used for employee-specific recordings view.
+ */
+export interface Person {
+  /** The name of the person detected. */
+  name: string | null;
+  /** The person's role in the organization. */
+  role: string | null;
+  /** The person's email address. */
+  email: string;
+  /** The duration the person was present (in seconds). */
+  duration: number;
+  /** Time intervals when the person was detected. */
+  intervals: { in: number; out: number }[];
+  /** Whether the person was present or absent. */
+  attendance: "Present" | "Absent" | string | null;
+  /** The department the person belongs to. */
+  department?: string | null;
+  /** The employee ID from auth/database. */
+  employee_id: string;
+  /** The person's phone number. */
+  phone_number?: string | null;
+}
+
+/**
+ * Represents a recording from an employee's perspective.
+ * Contains only the employee's own data extracted from results_json.
+ */
+export interface EmployeeRecording {
+  /** The unique identifier for the recording. */
+  id: string;
+  /** The name of the video file. */
+  video_name: string | null;
+  /** The URL of the video file (if stored). */
+  video_url: string | null;
+  /** The duration of the video in seconds. */
+  video_duration: number | null;
+  /** The timestamp when the recording was created. */
+  created_at: string | null;
+  /** The employee's data extracted from results_json. */
+  person: Person;
 }

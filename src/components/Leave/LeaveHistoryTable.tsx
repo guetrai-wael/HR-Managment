@@ -96,6 +96,21 @@ const LeaveHistoryTable: React.FC<LeaveHistoryTableProps> = ({
   // Use prop data if provided, otherwise use fetched data
   const leaveRequests = propLeaveRequests || fetchedLeaveRequests;
 
+  // Controlled pagination state to ensure pagination works reliably
+  const [currentPage, setCurrentPage] = React.useState<number>(1);
+  const [pageSize, setPageSize] = React.useState<number>(8);
+
+  // Reset page when data changes to avoid empty pages
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [leaveRequests]);
+
+  const paginatedData = React.useMemo(() => {
+    if (!leaveRequests) return [];
+    const start = (currentPage - 1) * pageSize;
+    return leaveRequests.slice(start, start + pageSize);
+  }, [leaveRequests, currentPage, pageSize]);
+
   const cancelMutation = useMutation<LeaveRequestDisplay, Error, string>({
     mutationFn: leaveApprovalService.cancelLeaveRequest,
     onSuccess: () => {
@@ -259,7 +274,7 @@ const LeaveHistoryTable: React.FC<LeaveHistoryTableProps> = ({
       </Title>
       <Table
         columns={columns}
-        dataSource={leaveRequests}
+        dataSource={paginatedData}
         loading={isLoading}
         rowKey="id"
         scroll={{ x: 700 }}
@@ -267,11 +282,19 @@ const LeaveHistoryTable: React.FC<LeaveHistoryTableProps> = ({
         className="leave-history-table"
         rowClassName="leave-table-row"
         pagination={{
-          pageSize: 8,
+          current: currentPage,
+          pageSize,
+          total: (leaveRequests || []).length,
           showSizeChanger: true,
           pageSizeOptions: ["5", "8", "15", "25"],
           showTotal: (total, range) =>
             `${range[0]}-${range[1]} of ${total} requests`,
+          onChange: (page, newPageSize) => {
+            setCurrentPage(page);
+            if (newPageSize && newPageSize !== pageSize) {
+              setPageSize(newPageSize);
+            }
+          },
         }}
       />
 
